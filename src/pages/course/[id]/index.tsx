@@ -380,7 +380,7 @@ function CourseDetails() {
                 {Module.videoId && (
                   <div className="mb-8">
                     <Videolayer 
-                      key={Module.videoId}
+                      key={`${course.id}-${selectedmoduleindex}`}
                       videoId={Module.videoId} 
                       title={Module.title} 
                       courseId={course.id}
