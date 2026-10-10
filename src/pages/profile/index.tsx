@@ -5,10 +5,25 @@ import {
   Pencil,
   Plus,
   Share2,
+  Award,
+  Flame,
 } from "lucide-react";
 import React, { useState } from "react";
 
 const index = () => {
+  const [badges, setBadges] = React.useState<string[]>([]);
+  const [streak, setStreak] = React.useState(0);
+  const [longestStreak, setLongestStreak] = React.useState(0);
+
+  React.useEffect(() => {
+    import('@/utils/learningActivity').then(({ getStreakData }) => {
+      const data = getStreakData();
+      setBadges(data.badges);
+      setStreak(data.currentStreak);
+      setLongestStreak(data.longestStreak);
+    });
+  }, []);
+
   const [user] = useState({
     name: "John Doe",
     title: "Software Engineer",
@@ -109,6 +124,39 @@ const index = () => {
               <span>{user.education}</span>
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-semibold mb-4">Achievements</h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-orange-50 border border-orange-100 p-4 rounded-lg flex flex-col items-center justify-center">
+              <Flame className="h-8 w-8 text-orange-500 mb-2 fill-current" />
+              <span className="text-2xl font-bold text-gray-900">{streak}</span>
+              <span className="text-sm text-gray-600">Current Streak</span>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex flex-col items-center justify-center">
+              <Flame className="h-8 w-8 text-blue-500 mb-2" />
+              <span className="text-2xl font-bold text-gray-900">{longestStreak}</span>
+              <span className="text-sm text-gray-600">Longest Streak</span>
+            </div>
+          </div>
+
+          {badges.length > 0 ? (
+            <div>
+              <h3 className="font-medium text-gray-800 mb-3">Earned Badges</h3>
+              <div className="flex flex-wrap gap-3">
+                {badges.map((badge, index) => (
+                  <div key={index} className="flex items-center space-x-2 bg-yellow-50 border border-yellow-200 px-4 py-2 rounded-lg">
+                    <Award className="h-5 w-5 text-yellow-600" />
+                    <span className="font-medium text-yellow-800">{badge}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">Keep learning to earn badges!</p>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">

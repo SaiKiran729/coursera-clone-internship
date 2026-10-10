@@ -1,8 +1,30 @@
-import { BookOpen, ChevronDown, Globe, Search } from "lucide-react";
+import { BookOpen, ChevronDown, Globe, Search, Flame } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import React, { useState } from "react";
 
 const Navbar = () => {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [streak, setStreak] = useState(0);
+
+  React.useEffect(() => {
+    const updateStreak = () => {
+      import('@/utils/learningActivity').then(({ getStreakData }) => {
+        setStreak(getStreakData().currentStreak);
+      });
+    };
+    updateStreak();
+    window.addEventListener('streakUpdated', updateStreak);
+    return () => window.removeEventListener('streakUpdated', updateStreak);
+  }, []);
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   const [user, setuser] = useState<{
     name: string;
     email: string;
@@ -163,6 +185,9 @@ const Navbar = () => {
                 <input
                   type="text"
                   placeholder="What do you want to learn?"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearch}
                   className={`w-[400px] pl-10 pr-4 py-2 border rounded-sm transition-all duration-200 ${
                     issearchfocused
                       ? "border-[#0056D2] shadow-sm"
@@ -172,13 +197,25 @@ const Navbar = () => {
                   onBlur={() => setissearchfocused(false)}
                 />
                 <Search
-                  className={`absolute left-3 top-2.5 h-5 w-5 transition-colors duration-200 ${
+                  className={`absolute left-3 top-2.5 h-5 w-5 transition-colors duration-200 cursor-pointer ${
                     issearchfocused ? "text-[#0056D2]" : "text-gray-400"
                   }`}
+                  onClick={() => {
+                    if (searchQuery.trim()) {
+                      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                    }
+                  }}
                 />
               </div>
             </div>
             <div className="flex items-center space-x-6">
+              {streak > 0 && (
+                <div className="flex items-center space-x-1 text-orange-500 font-bold bg-orange-50 px-3 py-1 rounded-full border border-orange-100 cursor-default" title="Current Learning Streak">
+                  <Flame className="w-5 h-5 fill-current" />
+                  <span>{streak} Day Streak</span>
+                </div>
+              )}
+              
               <div className="relative">
                 <button
                   className="text-[#0056D2] font-semibold hover:opacity-80 transition-opacity flex items-center"
