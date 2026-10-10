@@ -1,6 +1,12 @@
 const CACHE_NAME = 'coursera-clone-cache-v2';
 
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      // Pre-cache the root page for offline fallback
+      return cache.addAll(['/']);
+    })
+  );
   self.skipWaiting();
 });
 
@@ -51,7 +57,7 @@ self.addEventListener('fetch', (event) => {
         
         // If it's a navigation request and we are offline, try to return the cached root HTML or page HTML
         if (event.request.mode === 'navigate') {
-           const rootCache = await caches.match(event.request.url);
+           const rootCache = await caches.match(event.request.url) || await caches.match('/');
            if (rootCache) return rootCache;
         }
       })

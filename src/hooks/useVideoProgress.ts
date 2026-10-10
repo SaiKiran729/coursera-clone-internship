@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const PROGRESS_PREFIX = 'video_progress_';
 
@@ -28,7 +28,7 @@ export function useVideoProgress(courseId: string, moduleIndex: number) {
     }
   }, [courseId, moduleIndex, storageKey]);
 
-  const saveProgress = (timestamp: number, duration: number) => {
+  const saveProgress = useCallback((timestamp: number, duration: number) => {
     // Basic validation
     if (timestamp < 0 || isNaN(timestamp) || isNaN(duration)) return;
     
@@ -48,7 +48,7 @@ export function useVideoProgress(courseId: string, moduleIndex: number) {
     } catch (e) {
       console.warn("Could not save video progress", e);
     }
-  };
+  }, [storageKey]);
 
   const clearProgress = () => {
     localStorage.removeItem(storageKey);

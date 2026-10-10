@@ -9,6 +9,11 @@ export interface StreakData {
 
 const STREAK_KEY = 'learning_streak';
 
+function parseLocalDate(dateString: string): Date {
+  const [y, m, d] = dateString.split('-').map(Number);
+  return new Date(y, m - 1, d); // Midnight local time
+}
+
 export function getStreakData(): StreakData {
   if (typeof window === 'undefined') {
     return { currentStreak: 0, longestStreak: 0, lastActivityDate: null, badges: [] };
@@ -17,7 +22,19 @@ export function getStreakData(): StreakData {
   try {
     const data = localStorage.getItem(STREAK_KEY);
     if (data) {
-      return JSON.parse(data);
+      const parsed: StreakData = JSON.parse(data);
+      // If user missed more than 1 day, the current active streak is 0 until new activity
+      if (parsed.lastActivityDate) {
+        const today = getLocalDateKey();
+        const todayDate = parseLocalDate(today);
+        const lastActivity = parseLocalDate(parsed.lastActivityDate);
+        const diffTime = Math.abs(todayDate.getTime() - lastActivity.getTime());
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) {
+          parsed.currentStreak = 0;
+        }
+      }
+      return parsed;
     }
   } catch (e) {
     console.error("Corrupt streak data in localStorage", e);
@@ -29,11 +46,6 @@ export function getStreakData(): StreakData {
     lastActivityDate: null,
     badges: [],
   };
-}
-
-function parseLocalDate(dateString: string): Date {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d); // Midnight local time
 }
 
 export function recordLearningActivity(): StreakData {

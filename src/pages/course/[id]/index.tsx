@@ -59,15 +59,25 @@ function CourseDetails() {
   const handleOfflineToggle = async () => {
     if (!course) return;
     if (isOffline) {
-      await removeOfflineCourse(course.id);
-      setIsOffline(false);
+      try {
+        await removeOfflineCourse(course.id);
+        setIsOffline(false);
+      } catch (e) {
+        console.error("Error removing offline course", e);
+      }
     } else {
       setIsDownloading(true);
-      const result = await downloadCourseForOffline(course);
-      setIsOffline(true);
-      setIsDownloading(false);
-      if (!result.imageCached) {
-        alert("Course downloaded successfully! Note: The course cover image could not be saved due to external network restrictions, but all text content is available offline.");
+      try {
+        const result = await downloadCourseForOffline(course);
+        setIsOffline(true);
+        if (!result.imageCached) {
+          alert("Course content saved for offline access! Note: Cover image could not be cached due to external network restrictions, but all text, syllabus, and modules are available offline.");
+        }
+      } catch (e) {
+        console.error("Error saving course for offline", e);
+        alert("Could not complete offline download. Please check your connection and try again.");
+      } finally {
+        setIsDownloading(false);
       }
     }
   };
@@ -137,9 +147,14 @@ function CourseDetails() {
         getOfflineCourse(id as string).then(offlineData => {
           if (offlineData) {
             // If we have offline data, use it (and its cached image)
+            const foundCourse = courses.find((c) => c.id === id);
             setCourse({
               ...offlineData,
-              image: offlineData.offlineImage || offlineData.image
+              image: offlineData.offlineImage || offlineData.image,
+              careerOutcomes: offlineData.careerOutcomes?.map((outcome, idx) => ({
+                ...outcome,
+                icon: foundCourse?.careerOutcomes?.[idx]?.icon
+              })) || []
             });
             setIsOffline(true);
           } else {
@@ -164,17 +179,78 @@ function CourseDetails() {
   if (showmodulepage) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        <header className="bg-white border-b border-gray-200 py-4 px-6 flex items-center">
-          <button
-            onClick={handlebackclick}
-            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors mr-4"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            <span className="font-medium">Back to Courses</span>
-          </button>
-          <h1 className="text-xl font-semibold text-gray-800 ml-2">
-            {course.title}
-          </h1>
+        <header className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={handlebackclick}
+              className="flex items-center text-gray-700 hover:text-blue-600 transition-colors mr-4"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              <span className="font-medium">Back to Courses</span>
+            </button>
+            <h1 className="text-xl font-semibold text-gray-800 ml-2 truncate max-w-md">
+              {course.title}
+            </h1>
+          </div>
+          
+          {!isCompleted && (
+            <div className="relative z-50">
+              <button 
+                onClick={() => setShowReminderMenu(!showReminderMenu)}
+                className={`flex items-center px-4 py-2 rounded-full border transition-colors ${
+                  reminderAt 
+                    ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {reminderAt ? (
+                  <BellRing className="h-5 w-5 mr-2 text-blue-600" />
+                ) : (
+                  <Bell className="h-5 w-5 mr-2" />
+                )}
+                <span className="text-sm font-medium hidden sm:inline">
+                  {reminderAt ? "Reminder Set" : "Set Reminder"}
+                </span>
+              </button>
+
+              {showReminderMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                  {reminderAt && (
+                    <div className="px-4 py-2 border-b border-gray-100 text-xs text-gray-500">
+                      Currently set for:<br/>
+                      <span className="font-semibold text-gray-700">
+                        {new Date(reminderAt).toLocaleString(undefined, {
+                          weekday: 'short',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => handleSetReminder(1)}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Remind me in 1 hour
+                  </button>
+                  <button 
+                    onClick={() => handleSetReminder(24)}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Remind me tomorrow
+                  </button>
+                  {reminderAt && (
+                    <button 
+                      onClick={handleCancelReminder}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                    >
+                      Cancel Reminder
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </header>
         <div className="flex flex-1 overflow-hidden">
           <div className="w-80 border-r border-gray-200 h-full overflow-y-auto flex-shrink-0">
@@ -304,6 +380,7 @@ function CourseDetails() {
                 {Module.videoId && (
                   <div className="mb-8">
                     <Videolayer 
+                      key={Module.videoId}
                       videoId={Module.videoId} 
                       title={Module.title} 
                       courseId={course.id}

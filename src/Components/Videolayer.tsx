@@ -29,10 +29,6 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
 
   const { savedTimestamp, saveProgress } = useVideoProgress(courseId, moduleIndex);
 
-  const onSaveProgress = (time: number, duration: number) => {
-    saveProgress(time, duration);
-  };
-
   useEffect(() => {
     setShowResumePrompt(!!savedTimestamp && savedTimestamp > 0);
   }, [videoId, savedTimestamp]);
@@ -40,16 +36,16 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
   useEffect(() => {
     return () => {
       // Save on unmount
-      if (playerRef.current && onSaveProgress) {
+      if (playerRef.current && saveProgress) {
         try {
            const time = playerRef.current.getCurrentTime();
            const duration = playerRef.current.getDuration();
-           if (time > 0) onSaveProgress(time, duration);
+           if (time > 0) saveProgress(time, duration);
         } catch(e) {}
       }
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [onSaveProgress]);
+  }, [saveProgress]);
 
   const onReady = (event: any) => {
     playerRef.current = event.target;
@@ -63,14 +59,14 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
       intervalRef.current = setInterval(() => {
          const time = player.getCurrentTime();
          const duration = player.getDuration();
-         if (time > 0 && onSaveProgress) onSaveProgress(time, duration);
+         if (time > 0 && saveProgress) saveProgress(time, duration);
       }, 5000);
     } 
     else if (event.data === 2) { // Paused
       if (intervalRef.current) clearInterval(intervalRef.current);
       const time = player.getCurrentTime();
       const duration = player.getDuration();
-      if (time > 0 && onSaveProgress) onSaveProgress(time, duration);
+      if (time > 0 && saveProgress) saveProgress(time, duration);
     }
     else if (event.data === 0) { // Ended
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -91,8 +87,8 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
       playerRef.current.seekTo(0);
       playerRef.current.playVideo();
       setShowResumePrompt(false);
-      if (onSaveProgress) {
-        onSaveProgress(0, playerRef.current.getDuration() || 0);
+      if (saveProgress) {
+        saveProgress(0, playerRef.current.getDuration() || 0);
       }
     }
   };

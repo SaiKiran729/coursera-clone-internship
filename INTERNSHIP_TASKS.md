@@ -80,7 +80,7 @@ Make course completion celebratory using confetti and motivational messages when
 - **Validation:** A course transitions to `isCompleted: true` ONLY when the length of `completedModules` perfectly matches the total required modules length for that specific course.
 - **Confetti Animation:** We implemented `react-confetti` to trigger a 3-5 second celebration (gravity: 0.15).
 - **Motivational Message:** A bouncy modal ("Great Job! You've completed this course!") overlays during the confetti burst.
-- **Persistence & Duplicate Prevention:** The `isCompleted` state is persisted to `localStorage`. The component utilizes a `useRef` to track the previous frame's completion status (`isCompleted: false → true`). If the user refreshes, it loads directly as `true → true`, preventing the confetti from improperly re-triggering.
+- **Persistence & Duplicate Prevention:** The `isCompleted` state is natively handled and tracked by `useCourseProgress`. The celebration logic was refactored strictly inside the `handleMarkComplete` click/completion boundary, verifying `isNewlyCompleted && !isCompleted`. This flawlessly ensures that refreshing the page never accidentally replays the confetti animation.
 
 ### Files Changed
 | File | Changes |
@@ -108,7 +108,8 @@ Allow learners to access downloaded course content without an internet connectio
 ### Implementation
 - **Offline Download & IndexedDB:** Integrated `idb-keyval` to dump course metadata, layout structure, text content, and skills into IndexedDB when a user explicitly requests to "Download for Offline".
 - **Available Offline Indicator:** Button morphs seamlessly into a green "Available Offline" UI state, offering a "Remove" toggle on click.
-- **Service Worker (`public/sw.js`):** A custom Network-First service worker aggressively caches the Next.js static asset shell (JS bundles, CSS, routing structure) as the user browses, ensuring the structural application doesn't collapse offline.
+- **Service Worker (`public/sw.js`):** A custom Network-First service worker aggressively caches the Next.js static asset shell (JS bundles, CSS, routing structure) as the user browses. Furthermore, it explicitly precaches the root HTML `/` on install. If offline client-side data fetching fails and Next.js forces a hard navigate reload, the Service Worker intelligently serves the matched course HTML or falls back to the precached root page, guaranteeing the application structure loads offline.
+- **Explicit HTML Caching:** The "Download for Offline" button also explicitly triggers `cache.add('/course/' + courseId)` to firmly lock the specific SSR HTML page in the Service Worker Cache. If this fails, the UI download throws a proper error instead of pretending to succeed.
 - **Video Exclusion:** Videos are strictly excluded from offline packaging logic. The Service Worker inherently bypasses `youtube.com` domains, failing gracefully with the browser's default "Offline" iframe placeholder without crashing the host app.
 
 ### IndexedDB
@@ -190,7 +191,7 @@ Stores inside `learning_streak`:
 Allow learners to set reminders for unfinished courses.
 
 ### Implementation
-- **Options:** Dropdown overlay offering "Remind me in 1 hour", "Remind me tomorrow", or "Cancel Reminder".
+- **Options:** Dropdown overlay offering "Remind me in 1 hour", "Remind me tomorrow", or "Cancel Reminder". To ensure it is highly visible, the reminder button is placed persistently in the sticky top header while viewing modules.
 - **Permission:** Leverages the native Browser Notification API seamlessly.
 - **Duplicate Prevention:** Identifies targets uniquely by `courseId`.
 - **Completed Course Handling:** If a course completes, the system proactively purges any pending reminders dynamically.
@@ -225,6 +226,7 @@ Allow learners to continue watching videos from their previous position.
 - **Timestamp Tracking:** Saving the progress implicitly every 5 seconds natively during playback, and forcing a save upon unmount or pausing.
 - **Resume UI:** If significant progress exists, mounting immediately prompts a localized "Resume Watching (02:05)" or "Start from Beginning" overlay natively over the player layout.
 - **Video Completion:** Hitting the end of the video duration successfully wires into `onComplete`, passing control back to the `markModuleComplete` architecture.
+- **Robust Player Swapping:** The component is tightly managed by React `key={Module.videoId}` and `useCallback` implementations, ensuring that swapping between video modules gracefully resets the player boundaries and doesn't accidentally save timestamps to the wrong internal video state.
 
 ### Storage
 Stores inside `video_progress_<courseId>_<moduleIndex>`:
