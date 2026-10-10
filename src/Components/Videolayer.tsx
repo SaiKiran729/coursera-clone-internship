@@ -29,9 +29,14 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
 
   const { savedTimestamp, saveProgress } = useVideoProgress(courseId, moduleIndex);
 
+  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
+
   useEffect(() => {
-    setShowResumePrompt(!!savedTimestamp && savedTimestamp > 0);
-  }, [videoId, savedTimestamp]);
+    // Only show the prompt if the user hasn't started interacting with the video yet
+    if (!hasStartedPlaying) {
+      setShowResumePrompt(!!savedTimestamp && savedTimestamp > 0);
+    }
+  }, [savedTimestamp, hasStartedPlaying]);
 
   useEffect(() => {
     return () => {
@@ -53,6 +58,10 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
 
   const onStateChange = (event: any) => {
     const player = event.target;
+    
+    if (event.data !== -1) {
+      setHasStartedPlaying(true);
+    }
     
     if (event.data === 1) { // Playing
       setShowResumePrompt(false);
