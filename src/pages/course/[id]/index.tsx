@@ -471,7 +471,10 @@ function CourseDetails() {
       <div className="sticky top-0 bg-white border-b z-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-4 md:space-x-8 overflow-x-auto whitespace-nowrap flex-1 pr-4" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              <style dangerouslySetInnerHTML={{__html: `
+                .overflow-x-auto::-webkit-scrollbar { display: none; }
+              `}} />
               <a
                 href="#overview"
                 className="text-gray-700 hover:text-[#0056D2]"
@@ -498,7 +501,7 @@ function CourseDetails() {
               </a>
             </div>
             <button
-              className="px-6 py-2 bg-[#0056D2] text-white font-semibold rounded-sm"
+              className="px-4 md:px-6 py-2 bg-[#0056D2] text-white font-semibold rounded-sm flex-shrink-0"
               onClick={handlemoduleclick}
             >
               Enroll Now
@@ -510,8 +513,8 @@ function CourseDetails() {
       {/* Course Header */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-start justify-between">
-            <div className="max-w-2xl">
+          <div className="flex flex-col lg:flex-row items-start justify-between gap-8 lg:gap-12">
+            <div className="w-full lg:max-w-2xl">
               <div className="flex items-center space-x-4 mb-4">
                 <div className="flex items-center">
                   <Certificate className="h-5 w-5 text-[#0056D2]" />
@@ -525,42 +528,42 @@ function CourseDetails() {
                 </div>
               </div>
 
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 {course.title}
               </h1>
 
-              <p className="text-lg text-gray-600 mb-6">
+              <p className="text-base md:text-lg text-gray-600 mb-6">
                 {showFullDescription
                   ? fullDescription
                   : fullDescription.slice(0, 200) + "..."}
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
-                  className="text-[#0056D2] ml-2 hover:underline"
+                  className="text-[#0056D2] ml-2 hover:underline inline-block mt-1"
                 >
                   {showFullDescription ? "Show less" : "Read more"}
                 </button>
               </p>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="flex items-center">
-                  <Users className="h-5 w-5 text-gray-500" />
+                  <Users className="h-5 w-5 text-gray-500 flex-shrink-0" />
                   <span className="ml-2">{course.students}</span>
                 </div>
                 <div className="flex items-center">
-                  <Award className="h-5 w-5 text-gray-500" />
+                  <Award className="h-5 w-5 text-gray-500 flex-shrink-0" />
                   <span className="ml-2">{course.level}</span>
                 </div>
                 <div className="flex items-center">
-                  <Clock className="h-5 w-5 text-gray-500" />
+                  <Clock className="h-5 w-5 text-gray-500 flex-shrink-0" />
                   <span className="ml-2">{course.timeline}</span>
                 </div>
                 <div className="flex items-center">
-                  <Calendar className="h-5 w-5 text-gray-500" />
-                  <span className="ml-2">Updated {course.lastUpdated}</span>
+                  <Calendar className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                  <span className="ml-2 text-sm md:text-base">Updated {course.lastUpdated}</span>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4 mb-8">
+              <div className="flex flex-wrap items-center gap-4 mb-8">
                 <button
                   className="px-8 py-3 bg-[#0056D2] text-white font-semibold rounded-sm hover:bg-blue-700 transition-colors"
                   onClick={handlemoduleclick}
@@ -670,7 +673,7 @@ function CourseDetails() {
               </div>
             </div>
 
-            <div className="w-[400px]">
+            <div className="w-full lg:w-[400px]">
               <div className="bg-white rounded-lg shadow-xl overflow-hidden sticky top-24">
                 <div className="relative">
                   <img
@@ -734,7 +737,7 @@ function CourseDetails() {
       <div className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-2xl font-bold mb-8">Career Outcomes</h2>
-          <div className="grid grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {course.careerOutcomes.map((outcome, index) => {
               const IconComponent = outcome.icon; // Now it's already a React component
 

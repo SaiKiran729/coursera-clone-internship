@@ -90,9 +90,9 @@ const index = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between mb-6">
-            <div className="flex space-x-4">
-              <img src={user.image} alt="" className="e-24 h-24 rounded-full" />
+          <div className="flex flex-col md:flex-row justify-between gap-4 md:mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 sm:space-x-4">
+              <img src={user.image} alt="" className="w-24 h-24 rounded-full" />
               <div>
                 <h1 className="text-2xl font-bold">{user.name}</h1>
                 <p className="text-gray-600">{user.title}</p>
@@ -103,11 +103,11 @@ const index = () => {
               </div>
             </div>
             <div className="flex space-x-3">
-              <button className="flex items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
+              <button className="flex-1 md:flex-none flex justify-center items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
                 <Share2 className="h-4 w-4" />
                 <span>Share</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
+              <button className="flex-1 md:flex-none flex justify-center items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
                 <Pencil className="h-4 w-4" />
                 <span>Edit Profile</span>
               </button>
