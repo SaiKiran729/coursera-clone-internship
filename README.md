@@ -45,10 +45,10 @@ The internship objective was to implement six distinct features into the trainin
 
 - **Task 1 — Search and Filter Courses with Tags:** Real-time discovery using title, description, and tag filtering natively.
 - **Task 2 — Animated Course Completion Confetti:** Celebratory integration utilizing `react-confetti` upon satisfying absolute module requirements.
-- **Task 3 — Offline Mode for Course Content:** Offline persistence leveraging `idb-keyval` (IndexedDB) and a custom Network-First Service Worker shell caching strategy.
+- **Task 3 — Offline Mode for Course Content:** Offline persistence leveraging `idb-keyval` (IndexedDB) alongside a custom Network-First Service Worker that explicitly precaches structural Next.js offline fallbacks and targeted course HTML pages.
 - **Task 4 — Streak Tracking for Daily Learning:** Deep engagement tracking featuring localized calendar parsing and earned user badges.
-- **Task 5 — Course Reminder Notification System:** Frontend-native Browser Notifications securely scheduling future learning intervals.
-- **Task 6 — Auto-Resume Video Playback:** Robust YouTube IFrame API wrapping (`react-youtube`) maintaining persistent timestamps per module natively.
+- **Task 5 — Course Reminder Notification System:** Frontend-native Browser Notifications securely scheduling future learning intervals, with controls deeply integrated into the sticky course module header for maximum visibility.
+- **Task 6 — Auto-Resume Video Playback:** Robust YouTube IFrame API wrapping (`react-youtube`) maintaining persistent timestamps per module natively, leveraging tight component keys and memoized hooks to strictly prevent timeline cross-contamination.
 
 ---
 
