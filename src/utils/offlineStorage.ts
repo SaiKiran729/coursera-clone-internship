@@ -6,11 +6,12 @@ export interface OfflineCourse extends Course {
   downloadedAt: string;
 }
 
-export async function downloadCourseForOffline(course: Course): Promise<void> {
+export async function downloadCourseForOffline(course: Course): Promise<{ success: boolean; imageCached: boolean }> {
   const courseData = { ...course };
 
   // Attempt to fetch and cache the main image as a base64 string
   let imageBlobBase64 = undefined;
+  let imageCached = false;
   try {
     const res = await fetch(course.image);
     if (res.ok) {
@@ -20,6 +21,7 @@ export async function downloadCourseForOffline(course: Course): Promise<void> {
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(blob);
       });
+      imageCached = true;
     }
   } catch (e) {
     console.warn("Could not cache image for offline due to CORS or network issues", e);
@@ -32,6 +34,7 @@ export async function downloadCourseForOffline(course: Course): Promise<void> {
   };
 
   await set(`offline_course_${course.id}`, offlineData);
+  return { success: true, imageCached };
 }
 
 export async function checkIsOffline(courseId: string): Promise<boolean> {

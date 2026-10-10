@@ -91,6 +91,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
       playerRef.current.seekTo(0);
       playerRef.current.playVideo();
       setShowResumePrompt(false);
+      if (onSaveProgress) {
+        onSaveProgress(0, playerRef.current.getDuration() || 0);
+      }
     }
   };
 

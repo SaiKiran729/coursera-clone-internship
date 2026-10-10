@@ -63,9 +63,12 @@ function CourseDetails() {
       setIsOffline(false);
     } else {
       setIsDownloading(true);
-      await downloadCourseForOffline(course);
+      const result = await downloadCourseForOffline(course);
       setIsOffline(true);
       setIsDownloading(false);
+      if (!result.imageCached) {
+        alert("Course downloaded successfully! Note: The course cover image could not be saved due to external network restrictions, but all text content is available offline.");
+      }
     }
   };
 
@@ -113,17 +116,20 @@ function CourseDetails() {
   } = useCourseProgress(course?.id || "", course?.modules.length || 0);
   
   const [showConfetti, setShowConfetti] = useState(false);
-  const prevIsCompleted = useRef<boolean | null>(null);
 
-  useEffect(() => {
-    if (progress) {
-      if (prevIsCompleted.current === false && isCompleted) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 5000);
-      }
-      prevIsCompleted.current = isCompleted;
+  const handleMarkComplete = (index: number) => {
+    if (!course) return;
+    markModuleComplete(index);
+    
+    // Check if this action makes the course complete
+    const isNewlyCompleted = !completedModules.includes(index) && 
+                             completedModules.length + 1 >= course.modules.length;
+                             
+    if (isNewlyCompleted && !isCompleted) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
     }
-  }, [isCompleted, progress]);
+  };
 
   useEffect(() => {
     if (id) {
@@ -262,7 +268,7 @@ function CourseDetails() {
 
                   {!completedModules.includes(selectedmoduleindex) ? (
                     <button
-                      onClick={() => markModuleComplete(selectedmoduleindex)}
+                      onClick={() => handleMarkComplete(selectedmoduleindex)}
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium flex items-center transition-colors shadow-sm"
                     >
                       <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -302,7 +308,7 @@ function CourseDetails() {
                       title={Module.title} 
                       courseId={course.id}
                       moduleIndex={selectedmoduleindex}
-                      onComplete={() => markModuleComplete(selectedmoduleindex)}
+                      onComplete={() => handleMarkComplete(selectedmoduleindex)}
                     />
                   </div>
                 )}

@@ -1,11 +1,21 @@
-const CACHE_NAME = 'coursera-clone-cache-v1';
+const CACHE_NAME = 'coursera-clone-cache-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
@@ -13,6 +23,7 @@ self.addEventListener('fetch', (event) => {
   if (
     event.request.url.includes('youtube.com') ||
     event.request.url.includes('youtu.be') ||
+    event.request.url.includes('/api/') || // Ignore Next.js API routes if any
     event.request.method !== 'GET'
   ) {
     return; // Let the browser handle it
@@ -23,7 +34,7 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then((networkResponse) => {
         // Cache the valid response
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -31,9 +42,18 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
+      .catch(async () => {
         // Fallback to cache if network fails
-        return caches.match(event.request);
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        // If it's a navigation request and we are offline, try to return the cached root HTML or page HTML
+        if (event.request.mode === 'navigate') {
+           const rootCache = await caches.match(event.request.url);
+           if (rootCache) return rootCache;
+        }
       })
   );
 });
