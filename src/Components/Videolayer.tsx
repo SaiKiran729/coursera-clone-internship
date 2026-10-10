@@ -59,7 +59,8 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: any) 
   const onStateChange = (event: any) => {
     const player = event.target;
     
-    if (event.data !== -1) {
+    // Only consider the video "started" if it actually plays or gets paused by the user
+    if (event.data === 1 || event.data === 2) {
       setHasStartedPlaying(true);
     }
     
