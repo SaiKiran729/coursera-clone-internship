@@ -55,7 +55,8 @@ export default function SearchPage() {
       const searchMatch = !searchLower || 
         (course.title && course.title.toLowerCase().includes(searchLower)) || 
         (course.description && course.description.toLowerCase().includes(searchLower)) ||
-        (course.modules && course.modules.some(m => m.description && m.description.toLowerCase().includes(searchLower)));
+        (course.modules && course.modules.some(m => m.description && m.description.toLowerCase().includes(searchLower))) ||
+        (course.skills && course.skills.some(skill => skill.toLowerCase().includes(searchLower)));
         
       const tagMatch = selectedTags.length === 0 || 
         selectedTags.every(tag => course.skills && course.skills.includes(tag));
