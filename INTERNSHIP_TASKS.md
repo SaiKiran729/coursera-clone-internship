@@ -53,15 +53,15 @@ This submission strictly satisfies all guidelines provided for final evaluation:
 Search courses by title or description and filter them by category without reloading the page.
 
 #### Requirements Checklist
-- [x] Open the Search page.
-- [x] Enter a course title in the search box.
-- [x] Verify that matching courses appear immediately.
-- [x] Search for a word found in a course description.
-- [x] Select a category or skill tag and verify the results.
-- [x] Apply a search term and category filter together.
-- [x] Enter a search term that matches no courses and check the empty state.
-- [x] Click “Clear all filters” and verify that the courses return.
-- [x] Check that searching and filtering do not cause a full-page reload.
+- ✅ Open the Search page.
+- ✅ Enter a course title in the search box.
+- ✅ Verify that matching courses appear immediately.
+- ✅ Search for a word found in a course description.
+- ✅ Select a category or skill tag and verify the results.
+- ✅ Apply a search term and category filter together.
+- ✅ Enter a search term that matches no courses and check the empty state.
+- ✅ Click “Clear all filters” and verify that the courses return.
+- ✅ Check that searching and filtering do not cause a full-page reload.
 
 #### Implementation Details
 - **Location:** `src/pages/search/index.tsx` and `src/Components/Navbar.tsx`
@@ -81,14 +81,14 @@ Search courses by title or description and filter them by category without reloa
 Display confetti and a motivational message when a course is completed.
 
 #### Requirements Checklist
-- [x] Open an incomplete course.
-- [x] Complete the required modules until the final module.
-- [x] Mark the final module as completed.
-- [x] Verify that confetti and a motivational message appear.
-- [x] Verify that the celebration disappears after approximately 3–5 seconds.
-- [x] Refresh the completed course page.
-- [x] Verify that the completion status remains saved.
-- [x] Verify that confetti does not appear again just because you refreshed.
+- ✅ Open an incomplete course.
+- ✅ Complete the required modules until the final module.
+- ✅ Mark the final module as completed.
+- ✅ Verify that confetti and a motivational message appear.
+- ✅ Verify that the celebration disappears after approximately 3–5 seconds.
+- ✅ Refresh the completed course page.
+- ✅ Verify that the completion status remains saved.
+- ✅ Verify that confetti does not appear again just because you refreshed.
 
 #### Implementation Details
 - **Location:** `src/pages/course/[id]/index.tsx` and `src/hooks/useCourseProgress.ts`
@@ -105,15 +105,15 @@ Display confetti and a motivational message when a course is completed.
 Save course content and access it without an internet connection. (Videos do not need to play offline).
 
 #### Requirements Checklist
-- [x] Open a course while connected to the internet.
-- [x] Click “Download for Offline.”
-- [x] Wait for the download confirmation or “Available Offline” indicator.
-- [x] Turn on Airplane mode or disconnect from the internet.
-- [x] Open the exact same course URL in a new browser tab.
-- [x] Verify that the course title and syllabus appear.
-- [x] Verify that the saved course text and images are available.
-- [x] Refresh the page while still offline.
-- [x] Verify again that the saved course content loads correctly.
+- ✅ Open a course while connected to the internet.
+- ✅ Click “Download for Offline.”
+- ✅ Wait for the download confirmation or “Available Offline” indicator.
+- ✅ Turn on Airplane mode or disconnect from the internet.
+- ✅ Open the exact same course URL in a new browser tab.
+- ✅ Verify that the course title and syllabus appear.
+- ✅ Verify that the saved course text and images are available.
+- ✅ Refresh the page while still offline.
+- ✅ Verify again that the saved course content loads correctly.
 
 #### Implementation Details
 - **Location:** `public/sw.js`, `src/utils/offlineStorage.ts`, and `src/pages/course/[id]/index.tsx`
@@ -131,13 +131,13 @@ Save course content and access it without an internet connection. (Videos do not
 Track daily learning activity, consecutive days, and achievements.
 
 #### Requirements Checklist
-- [x] Open the Profile page.
-- [x] Verify that the current learning streak is displayed.
-- [x] Complete a lesson or learning activity today.
-- [x] Refresh the page and verify that today's activity remains recorded.
-- [x] Complete another lesson today and check that the streak does not increase twice on the same day.
-- [x] Check the achievements section for the 7-Day badge if your streak has reached seven consecutive days.
-- [x] If possible, verify missed-day reset behavior using suitable test data rather than waiting a day just for testing.
+- ✅ Open the Profile page.
+- ✅ Verify that the current learning streak is displayed.
+- ✅ Complete a lesson or learning activity today.
+- ✅ Refresh the page and verify that today's activity remains recorded.
+- ✅ Complete another lesson today and check that the streak does not increase twice on the same day.
+- ✅ Check the achievements section for the 7-Day badge if your streak has reached seven consecutive days.
+- ✅ If possible, verify missed-day reset behavior using suitable test data rather than waiting a day just for testing.
 
 #### Implementation Details
 - **Location:** `src/utils/learningActivity.ts`, `src/utils/date.ts`, `src/pages/profile/index.tsx`, and `src/Components/Navbar.tsx`
@@ -167,15 +167,15 @@ Track daily learning activity, consecutive days, and achievements.
 Schedule and cancel reminders for unfinished courses.
 
 #### Requirements Checklist
-- [x] Open a course that is not completed.
-- [x] Find the reminder option on the course overview page.
-- [x] Open a video or module and check whether the reminder option is available there too.
-- [x] Select “Remind me in 1 hour.”
-- [x] Verify that the reminder is scheduled or that its status is displayed.
-- [x] Cancel the reminder and verify that it is cancelled.
-- [x] Select “Remind me tomorrow.”
-- [x] Allow browser notifications if prompted.
-- [x] Check notification delivery after the scheduled time.
+- ✅ Open a course that is not completed.
+- ✅ Find the reminder option on the course overview page.
+- ✅ Open a video or module and check whether the reminder option is available there too.
+- ✅ Select “Remind me in 1 hour.”
+- ✅ Verify that the reminder is scheduled or that its status is displayed.
+- ✅ Cancel the reminder and verify that it is cancelled.
+- ✅ Select “Remind me tomorrow.”
+- ✅ Allow browser notifications if prompted.
+- ✅ Check notification delivery after the scheduled time.
 
 #### Implementation Details
 - **Location:** `src/pages/course/[id]/index.tsx`, `src/utils/notifications.ts`, and `src/pages/_app.tsx`
@@ -196,14 +196,14 @@ Schedule and cancel reminders for unfinished courses.
 Save the last watched position and allow users to resume or restart videos.
 
 #### Requirements Checklist
-- [x] Open a course video and start playing.
-- [x] Play for 20-30 seconds, then navigate away or pause.
-- [x] Reopen the same video.
-- [x] Verify that a "Resume Watching" option appears with the saved timestamp (e.g., "Resume from 0:25") and a "Start from Beginning" option.
-- [x] Click "Resume Watching" and verify that playback resumes from the saved position.
-- [x] Reopen the video again and click "Start from Beginning."
-- [x] Verify that playback restarts from 0:00 and the saved position resets.
-- [x] Switch between multiple module videos and verify that progress is tracked independently.
+- ✅ Open a course video and start playing.
+- ✅ Play for 20-30 seconds, then navigate away or pause.
+- ✅ Reopen the same video.
+- ✅ Verify that a "Resume Watching" option appears with the saved timestamp (e.g., "Resume from 0:25") and a "Start from Beginning" option.
+- ✅ Click "Resume Watching" and verify that playback resumes from the saved position.
+- ✅ Reopen the video again and click "Start from Beginning."
+- ✅ Verify that playback restarts from 0:00 and the saved position resets.
+- ✅ Switch between multiple module videos and verify that progress is tracked independently.
 
 #### Implementation Details
 - **Location:** `src/Components/Videolayer.tsx` and `src/hooks/useVideoProgress.ts`
@@ -264,15 +264,15 @@ The application layout has been rigorously verified on:
 
 ## 6. Pre-Submission Final Verification
 
-- [x] Built directly on the training project codebase.
-- [x] All 6 internship tasks implemented pin-to-pin.
-- [x] Zero compilation or TypeScript errors (`npx tsc --noEmit` clean).
-- [x] Production build generated cleanly (`npm run build` static generation complete).
-- [x] Public live deployment active: **[https://coursera-internship.vercel.app/](https://coursera-internship.vercel.app/)**.
-- [x] Live deployment tested in incognito mode (zero authentication barriers).
-- [x] Responsive layout verified across mobile, tablet, and desktop viewports.
-- [x] README.md and INTERNSHIP_TASKS.md fully updated with all rules and documentation.
-- [x] Final Git commit created and pushed to the remote repository.
+- ✅ Built directly on the training project codebase.
+- ✅ All 6 internship tasks implemented pin-to-pin.
+- ✅ Zero compilation or TypeScript errors (`npx tsc --noEmit` clean).
+- ✅ Production build generated cleanly (`npm run build` static generation complete).
+- ✅ Public live deployment active: **[https://coursera-internship.vercel.app/](https://coursera-internship.vercel.app/)**.
+- ✅ Live deployment tested in incognito mode (zero authentication barriers).
+- ✅ Responsive layout verified across mobile, tablet, and desktop viewports.
+- ✅ README.md and INTERNSHIP_TASKS.md fully updated with all rules and documentation.
+- ✅ Final Git commit created and pushed to the remote repository.
 
 ---
 
