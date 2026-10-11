@@ -3,7 +3,7 @@ import YouTube, { YouTubeProps, YouTubePlayer } from "react-youtube";
 import { useRouter } from "next/router";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { recordLearningActivity } from "@/utils/learningActivity";
-import { Play, RotateCcw, Clock, WifiOff } from "lucide-react";
+import { Play, RotateCcw, Clock, WifiOff, X } from "lucide-react";
 
 const extractYouTubeId = (urlOrId: string) => {
   if (!urlOrId) return "";
@@ -59,14 +59,18 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     return 0;
   }, [courseId, moduleIndex]);
 
-  // Active saved timestamp: either from hook or direct storage read
-  const [activeSavedTime, setActiveSavedTime] = useState<number>(() => {
-    return (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+  // Track if prompt was already handled in THIS page visit
+  // CRITICAL: Once handled or dismissed on this page, NEVER prompt again while user stays on the same page!
+  const hasHandledPromptThisVisit = useRef<boolean>(false);
+
+  // Active saved timestamp captured AT MOUNT TIME
+  const [initialSavedTime, setInitialSavedTime] = useState<number>(() => {
+    return readStorageTime();
   });
 
-  // Prompt state: show whenever a valid saved timestamp (>= 2s) exists
+  // Prompt state: ONLY true on mount if initialSavedTime >= 2
   const [showResumePrompt, setShowResumePrompt] = useState<boolean>(() => {
-    const time = (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+    const time = readStorageTime();
     return time >= 2;
   });
 
@@ -88,19 +92,21 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     }
   }, []);
 
-  // Sync state whenever savedTimestamp changes or module switches
+  // When moduleIndex or courseId changes (switching to a different module), re-check for that module
   useEffect(() => {
-    const time = (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+    hasHandledPromptThisVisit.current = false;
+    const time = readStorageTime();
+    setInitialSavedTime(time);
     if (time >= 2) {
-      setActiveSavedTime(time);
       setShowResumePrompt(true);
       currentTimeRef.current = time;
       setCurrentDisplayTime(time);
     } else {
-      setActiveSavedTime(0);
       setShowResumePrompt(false);
+      currentTimeRef.current = 0;
+      setCurrentDisplayTime(0);
     }
-  }, [savedTimestamp, courseId, moduleIndex, readStorageTime]);
+  }, [courseId, moduleIndex, readStorageTime]);
 
   // Synchronously flush the current position to localStorage
   const flushCurrentProgress = useCallback(() => {
@@ -211,9 +217,8 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       }
     } catch (e) {}
 
-    // If there is an active resume prompt, ensure video is kept paused initially
-    const stored = readStorageTime();
-    if (stored >= 2) {
+    // If resume prompt is active, ensure video is kept paused initially
+    if (showResumePrompt) {
       try {
         event.target.pauseVideo();
       } catch (e) {}
@@ -248,6 +253,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           if (time > 0) {
             currentTimeRef.current = time;
             setCurrentDisplayTime(time);
+            // Save in background without re-triggering prompt on same page
             if (time >= 2 && saveProgress) {
               saveProgress(time, dur);
             }
@@ -281,8 +287,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       if (dur > 0 && cur >= dur - 3) {
         currentTimeRef.current = 0;
         setCurrentDisplayTime(0);
-        setActiveSavedTime(0);
+        setInitialSavedTime(0);
         setShowResumePrompt(false);
+        hasHandledPromptThisVisit.current = true;
         if (clearProgress) clearProgress();
         try {
           localStorage.removeItem(storageKey);
@@ -294,8 +301,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   };
 
   const handleResume = () => {
+    hasHandledPromptThisVisit.current = true;
     setShowResumePrompt(false);
-    const targetTime = activeSavedTime || readStorageTime();
+    const targetTime = initialSavedTime || readStorageTime();
     if (playerRef.current && targetTime >= 2) {
       try {
         playerRef.current.seekTo(targetTime, true);
@@ -308,8 +316,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   };
 
   const handleStartOver = () => {
+    hasHandledPromptThisVisit.current = true;
     setShowResumePrompt(false);
-    setActiveSavedTime(0);
+    setInitialSavedTime(0);
     currentTimeRef.current = 0;
     setCurrentDisplayTime(0);
     if (clearProgress) {
@@ -348,10 +357,32 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
   return (
     <div className="w-full flex flex-col space-y-3">
-      <div className="w-full aspect-video rounded-xl overflow-hidden shadow-xl relative bg-[#090d16] border border-gray-800">
+      {/* Theater Container with guaranteed aspect-ratio and generous responsive minimum height */}
+      <div 
+        className="w-full aspect-video min-h-[240px] sm:min-h-[380px] md:min-h-[450px] rounded-2xl overflow-hidden shadow-2xl relative bg-[#090d16] border border-gray-800"
+        style={{
+          width: '100%',
+          aspectRatio: '16 / 9',
+          position: 'relative',
+        }}
+      >
         {/* Offline Fallback Banner for Task 3 */}
         {!isOnline && (
-          <div className="absolute inset-0 z-50 bg-[#0a0f1d] flex flex-col items-center justify-center p-6 text-center text-white">
+          <div 
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 60,
+              backgroundColor: '#0a0f1d',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
+              textAlign: 'center',
+              color: '#ffffff'
+            }}
+          >
             <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-full mb-3 text-amber-400">
               <WifiOff className="w-8 h-8" />
             </div>
@@ -362,49 +393,149 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           </div>
         )}
 
-        {/* 100% Solid Opaque Resume Overlay (No YouTube Play Button or Text Bleed-Through) */}
-        {showResumePrompt && activeSavedTime >= 2 && (
+        {/* 100% Solid Opaque Resume Overlay: NEVER shows while user is in the same page watching; ONLY shows on route re-entry */}
+        {showResumePrompt && initialSavedTime >= 2 && (
           <div 
             id="video-resume-overlay"
-            className="absolute inset-0 z-40 bg-[#0a0f1d] flex flex-col items-center justify-center p-4 sm:p-6 text-center select-none shadow-2xl transition-all"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 50,
+              backgroundColor: '#090d16',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2rem 1.5rem',
+              textAlign: 'center',
+              userSelect: 'none',
+              boxShadow: 'inset 0 0 100px rgba(0, 0, 0, 0.8)',
+            }}
           >
-            {/* Elegant Compact Badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-semibold mb-2 sm:mb-3 shadow-xs">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Resume Available</span>
+            {/* Pill Badge */}
+            <div 
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.85rem',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(0, 86, 210, 0.18)',
+                border: '1px solid rgba(0, 86, 210, 0.45)',
+                color: '#60a5fa',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                marginBottom: '1rem',
+              }}
+            >
+              <Clock style={{ width: '0.875rem', height: '0.875rem' }} />
+              <span>Resume Watching</span>
             </div>
 
             {/* Clear Heading */}
-            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1.5 tracking-tight">
-              Resume Watching?
+            <h3 
+              style={{
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '0.5rem',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Pick up where you left off
             </h3>
 
             {/* Explanatory text */}
-            <p className="text-gray-300 text-xs sm:text-sm max-w-sm sm:max-w-md mb-4 sm:mb-5 leading-relaxed">
+            <p 
+              style={{
+                color: '#94a3b8',
+                fontSize: '0.875rem',
+                maxWidth: '28rem',
+                marginBottom: '1.75rem',
+                lineHeight: 1.5,
+              }}
+            >
               You previously stopped at{" "}
-              <span className="font-bold text-blue-300 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700/60 text-xs sm:text-sm">
-                {formatTime(activeSavedTime)}
+              <span 
+                style={{
+                  fontWeight: 700,
+                  color: '#93c5fd',
+                  backgroundColor: 'rgba(30, 58, 138, 0.7)',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '0.25rem',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                }}
+              >
+                {formatTime(initialSavedTime)}
               </span>
               . Would you like to resume or start from the beginning?
             </p>
 
-            {/* Action Buttons: 100% Visible, Proportional, Never Cut Off */}
-            <div className="flex flex-row items-center justify-center gap-3 w-full max-w-sm sm:max-w-md px-2">
+            {/* Action Buttons: 100% Solid, High Contrast, Guaranteed Visibility */}
+            <div 
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.875rem',
+                width: '100%',
+                maxWidth: '26rem',
+              }}
+            >
               <button 
                 id="btn-resume-watching"
                 onClick={handleResume}
-                className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-[#0056D2] hover:bg-blue-600 active:bg-blue-700 text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-blue-900/40 transition-all transform hover:scale-[1.02] cursor-pointer"
+                style={{
+                  flex: 1,
+                  padding: '0.85rem 1.25rem',
+                  backgroundColor: '#0056D2',
+                  color: '#ffffff',
+                  borderRadius: '0.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(0, 86, 210, 0.4)',
+                  transition: 'background-color 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#00419e')}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#0056D2')}
               >
-                <Play className="w-4 h-4 fill-current flex-shrink-0" />
-                <span className="truncate">Resume from {formatTime(activeSavedTime)}</span>
+                <Play style={{ width: '1rem', height: '1rem', fill: 'currentColor' }} />
+                <span>Resume from {formatTime(initialSavedTime)}</span>
               </button>
+
               <button 
                 id="btn-start-beginning"
                 onClick={handleStartOver}
-                className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-gray-200 hover:text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 transition-all transform hover:scale-[1.02] cursor-pointer"
+                style={{
+                  flex: 1,
+                  padding: '0.85rem 1.25rem',
+                  backgroundColor: '#1e293b',
+                  color: '#f8fafc',
+                  borderRadius: '0.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  border: '1px solid #334155',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#334155')}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#1e293b')}
               >
-                <RotateCcw className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Start from Beginning</span>
+                <RotateCcw style={{ width: '1rem', height: '1rem' }} />
+                <span>Start from Beginning</span>
               </button>
             </div>
           </div>
@@ -415,8 +546,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           opts={opts} 
           onReady={onReady}
           onStateChange={onStateChange}
-          className="w-full h-full"
-          iframeClassName="w-full h-full"
+          className="w-full h-full absolute inset-0"
+          iframeClassName="w-full h-full absolute inset-0 border-0"
+          style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
         />
       </div>
 
@@ -428,9 +560,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             Current position: <span className="font-medium text-gray-800">{formatTime(currentDisplayTime)}</span>
             {durationDisplay > 0 && ` / ${formatTime(durationDisplay)}`}
           </span>
-          {activeSavedTime >= 2 && (
+          {initialSavedTime >= 2 && (
             <span className="hidden sm:inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium ml-2 border border-blue-200">
-              Saved at {formatTime(activeSavedTime)}
+              Saved at {formatTime(initialSavedTime)}
             </span>
           )}
         </div>

@@ -331,8 +331,8 @@ function CourseDetails() {
             </div>
           )}
         </header>
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-80 border-r border-gray-200 h-full overflow-y-auto flex-shrink-0">
+        <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+          <div className="hidden md:block w-72 lg:w-80 border-r border-gray-200 h-full overflow-y-auto flex-shrink-0">
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-800">
                 Course Modules
@@ -387,9 +387,27 @@ function CourseDetails() {
           </div>
 
           <div className="flex-1 h-full overflow-y-auto bg-gray-50">
-            <div className="max-w-full mx-auto p-6">
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+              {/* Mobile Module Selector */}
+              <div className="md:hidden mb-4 bg-white p-3 rounded-xl border border-gray-200 shadow-xs">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
+                  Select Module ({selectedmoduleindex + 1}/{course.modules.length})
+                </label>
+                <select
+                  value={selectedmoduleindex}
+                  onChange={(e) => changeModule(Number(e.target.value))}
+                  className="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 bg-white"
+                >
+                  {course.modules.map((mod, idx) => (
+                    <option key={idx} value={idx}>
+                      Module {idx + 1}: {mod.title} {completedModules.includes(idx) ? '✓ (Completed)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 lg:p-8 mb-6 border border-gray-100">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   {Module.title}
                 </h2>
                 <div className="flex gap-4 mb-6">
@@ -403,7 +421,7 @@ function CourseDetails() {
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2 sm:gap-3 mb-6">
                   <button
                     onClick={() =>
                       changeModule(
@@ -411,27 +429,27 @@ function CourseDetails() {
                       )
                     }
                     disabled={selectedmoduleindex === 0}
-                    className={`px-4 py-2 rounded-md flex items-center ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center transition-all ${
                       selectedmoduleindex === 0
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                     }`}
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    <ArrowLeft className="h-4 w-4 mr-1.5" />
                     Previous Module
                   </button>
 
                   {!completedModules.includes(selectedmoduleindex) ? (
                     <button
                       onClick={() => handleMarkComplete(selectedmoduleindex)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium flex items-center transition-colors shadow-sm"
+                      className="px-4 sm:px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 text-xs sm:text-sm font-semibold flex items-center transition-all shadow-sm"
                     >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      <CheckCircle2 className="w-4 h-4 mr-1.5" />
                       Mark as Complete
                     </button>
                   ) : (
-                    <div className="px-4 py-2 bg-green-100 text-green-700 rounded-md font-medium flex items-center">
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                    <div className="px-4 sm:px-5 py-2 bg-green-100 text-green-700 rounded-lg text-xs sm:text-sm font-semibold flex items-center border border-green-200">
+                      <CheckCircle2 className="w-4 h-4 mr-1.5 text-green-600" />
                       Completed
                     </div>
                   )}
@@ -446,14 +464,14 @@ function CourseDetails() {
                       )
                     }
                     disabled={selectedmoduleindex === course.modules.length - 1}
-                    className={`px-4 py-2 rounded-md flex items-center ${
+                    className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center transition-all ${
                       selectedmoduleindex === course.modules.length - 1
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-[#0056D2] text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm"
                     }`}
                   >
                     Next Module
-                    <ArrowLeft className="h-4 w-4 ml-2 transform rotate-180" />
+                    <ArrowLeft className="h-4 w-4 ml-1.5 transform rotate-180" />
                   </button>
                 </div>
                 {Module.videoId && (
