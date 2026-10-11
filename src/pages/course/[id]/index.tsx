@@ -37,7 +37,7 @@ import Videolayer from "@/Components/Videolayer";
 import Confetti from "react-confetti";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
 import { useRef } from "react";
-import { downloadCourseForOffline, checkIsOffline, removeOfflineCourse } from '@/utils/offlineStorage';
+import { downloadCourseForOffline, checkIsOffline, removeOfflineCourse, getOfflineCourse } from '@/utils/offlineStorage';
 import { getReminders, setReminder, cancelReminder as cancelNotification, requestNotificationPermission } from '@/utils/notifications';
 
 function CourseDetails() {
@@ -45,41 +45,103 @@ function CourseDetails() {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [selectedmoduleindex, setselectedmoduleindex] = useState(0);
   const [showmodulepage, setshowmodulepage] = useState(false);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [reminderAt, setReminderAt] = useState<number | null>(null);
+  const [showReminderMenu, setShowReminderMenu] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [resumableModule, setResumableModule] = useState<{ index: number; timestamp: number } | null>(null);
+
   const router = useRouter();
   const queryId = router.query.id as string | undefined;
 
-  const [course, setCourse] = useState<Course | null>(null);
+  const {
+    progress,
+    markModuleComplete,
+    isCompleted,
+    completedModules
+  } = useCourseProgress(course?.id || "", course?.modules?.length || 0);
 
-  const [isOffline, setIsOffline] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-
+  // 1. Immediately resolve course from in-memory constant, then verify offline data
   useEffect(() => {
-    const activeId = queryId || (typeof window !== 'undefined' ? window.location.pathname.split('/course/')[1]?.split('?')[0] : '');
+    const getActiveId = () => {
+      if (typeof router.query.id === 'string' && router.query.id) return router.query.id;
+      if (typeof window !== 'undefined') {
+        const parts = window.location.pathname.split('/course/');
+        if (parts[1]) return parts[1].split('?')[0].split('/')[0];
+      }
+      return '';
+    };
+
+    const activeId = getActiveId();
     if (!activeId) return;
 
-    import('@/utils/offlineStorage').then(({ getOfflineCourse, checkIsOffline }) => {
-      checkIsOffline(activeId).then(setIsOffline);
-      getOfflineCourse(activeId).then(offlineData => {
-        if (offlineData) {
-          const foundCourse = courses.find((c) => c.id === activeId);
-          setCourse({
-            ...offlineData,
-            image: offlineData.offlineImage || offlineData.image,
-            careerOutcomes: offlineData.careerOutcomes?.map((outcome, idx) => ({
-              ...outcome,
-              icon: foundCourse?.careerOutcomes?.[idx]?.icon || TrendingUp
-            })) || []
-          });
-          setIsOffline(true);
-        } else {
-          const foundCourse = courses.find((c) => c.id === activeId);
-          if (foundCourse) {
-            setCourse(foundCourse);
+    const foundCourse = courses.find((c) => c.id === activeId);
+    if (foundCourse) {
+      setCourse(foundCourse);
+    }
+
+    checkIsOffline(activeId).then(setIsOffline).catch(() => {});
+    getOfflineCourse(activeId).then((offlineData) => {
+      if (offlineData) {
+        setCourse({
+          ...offlineData,
+          image: offlineData.offlineImage || offlineData.image,
+          careerOutcomes: offlineData.careerOutcomes?.map((outcome, idx) => ({
+            ...outcome,
+            icon: foundCourse?.careerOutcomes?.[idx]?.icon || TrendingUp
+          })) || []
+        });
+        setIsOffline(true);
+      }
+    }).catch(() => {});
+  }, [router.isReady, router.query.id]);
+
+  // 2. Synchronize reminders
+  useEffect(() => {
+    if (course?.id) {
+      const updateReminder = () => {
+        const reminders = getReminders();
+        setReminderAt(reminders[course.id]?.reminderAt || null);
+      };
+      updateReminder();
+      window.addEventListener('remindersUpdated', updateReminder);
+      return () => window.removeEventListener('remindersUpdated', updateReminder);
+    }
+  }, [course?.id]);
+
+  // 3. Module URL query synchronization
+  useEffect(() => {
+    if (router.isReady && router.query.module !== undefined) {
+      const modIdx = parseInt(router.query.module as string, 10);
+      if (!isNaN(modIdx) && modIdx >= 0) {
+        setselectedmoduleindex(modIdx);
+        setshowmodulepage(true);
+      }
+    }
+  }, [router.isReady, router.query.module]);
+
+  // 4. Resumable module detection across all modules
+  useEffect(() => {
+    if (typeof window === 'undefined' || !course?.id || !course.modules) return;
+    const findResumable = () => {
+      for (let i = 0; i < course.modules.length; i++) {
+        try {
+          const item = localStorage.getItem(`video_progress_${course.id}_${i}`);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed && parsed.timestamp >= 2) {
+              setResumableModule({ index: i, timestamp: parsed.timestamp });
+              return;
+            }
           }
-        }
-      });
-    });
-  }, [router.isReady, queryId]);
+        } catch (e) {}
+      }
+      setResumableModule(null);
+    };
+    findResumable();
+  }, [course?.id, showmodulepage]);
 
   const handleOfflineToggle = async () => {
     if (!course) return;
@@ -106,21 +168,6 @@ function CourseDetails() {
       }
     }
   };
-
-  const [reminderAt, setReminderAt] = useState<number | null>(null);
-  const [showReminderMenu, setShowReminderMenu] = useState(false);
-
-  useEffect(() => {
-    if (course?.id) {
-      const updateReminder = () => {
-        const reminders = getReminders();
-        setReminderAt(reminders[course.id]?.reminderAt || null);
-      };
-      updateReminder();
-      window.addEventListener('remindersUpdated', updateReminder);
-      return () => window.removeEventListener('remindersUpdated', updateReminder);
-    }
-  }, [course?.id]);
 
   const handleSetReminder = async (hours: number) => {
     if (!course) return;
@@ -153,15 +200,6 @@ function CourseDetails() {
     setShowReminderMenu(false);
   };
 
-  const {
-    progress,
-    markModuleComplete,
-    isCompleted,
-    completedModules
-  } = useCourseProgress(course?.id || "", course?.modules.length || 0);
-
-  const [showConfetti, setShowConfetti] = useState(false);
-
   const handleMarkComplete = (index: number) => {
     if (!course) return;
     markModuleComplete(index);
@@ -173,6 +211,29 @@ function CourseDetails() {
     if (isNewlyCompleted && !isCompleted) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
+    }
+  };
+
+  const handlebackclick = () => {
+    setshowmodulepage(false);
+    if (course?.id) {
+      router.replace(`/course/${course.id}`, undefined, { shallow: true });
+    }
+  };
+
+  const handlemoduleclick = (targetIndex?: number) => {
+    const idx = typeof targetIndex === 'number' ? targetIndex : (resumableModule?.index ?? selectedmoduleindex);
+    setselectedmoduleindex(idx);
+    setshowmodulepage(true);
+    if (course?.id) {
+      router.replace({ pathname: `/course/${course.id}`, query: { module: idx } }, undefined, { shallow: true });
+    }
+  };
+
+  const changeModule = (index: number) => {
+    setselectedmoduleindex(index);
+    if (course?.id) {
+      router.replace({ pathname: `/course/${course.id}`, query: { module: index } }, undefined, { shallow: true });
     }
   };
 
@@ -197,60 +258,8 @@ function CourseDetails() {
       </div>
     );
   }
-  useEffect(() => {
-    if (router.isReady && router.query.module !== undefined) {
-      const modIdx = parseInt(router.query.module as string, 10);
-      if (!isNaN(modIdx) && modIdx >= 0) {
-        setselectedmoduleindex(modIdx);
-        setshowmodulepage(true);
-      }
-    }
-  }, [router.isReady, router.query.module]);
 
-  const [resumableModule, setResumableModule] = useState<{ index: number; timestamp: number } | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !course?.id || !course.modules) return;
-    const findResumable = () => {
-      for (let i = 0; i < course.modules.length; i++) {
-        try {
-          const item = localStorage.getItem(`video_progress_${course.id}_${i}`);
-          if (item) {
-            const parsed = JSON.parse(item);
-            if (parsed && parsed.timestamp >= 2) {
-              setResumableModule({ index: i, timestamp: parsed.timestamp });
-              return;
-            }
-          }
-        } catch (e) {}
-      }
-      setResumableModule(null);
-    };
-    findResumable();
-  }, [course?.id, showmodulepage]);
-
-  const Module = course.modules[selectedmoduleindex];
-  const handlebackclick = () => {
-    setshowmodulepage(false);
-    if (course?.id) {
-      router.replace(`/course/${course.id}`, undefined, { shallow: true });
-    }
-  };
-  const handlemoduleclick = (targetIndex?: number) => {
-    const idx = typeof targetIndex === 'number' ? targetIndex : (resumableModule?.index ?? selectedmoduleindex);
-    setselectedmoduleindex(idx);
-    setshowmodulepage(true);
-    if (course?.id) {
-      router.replace({ pathname: `/course/${course.id}`, query: { module: idx } }, undefined, { shallow: true });
-    }
-  };
-
-  const changeModule = (index: number) => {
-    setselectedmoduleindex(index);
-    if (course?.id) {
-      router.replace({ pathname: `/course/${course.id}`, query: { module: index } }, undefined, { shallow: true });
-    }
-  };
+  const Module = course.modules[selectedmoduleindex] || course.modules[0];
 
   if (showmodulepage) {
     return (

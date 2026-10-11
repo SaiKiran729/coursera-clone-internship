@@ -392,4 +392,3 @@ For queries or evaluation reviews:
 - **Internship Organization:** ElevanceSkills
 - **Support Email:** `training@elevanceskills.com`
 - **Domain:** Web Development Internship
-- **Student Name:** Sai Kiran
