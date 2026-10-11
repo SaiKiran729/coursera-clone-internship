@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import YouTube, { YouTubeProps, YouTubePlayer } from "react-youtube";
 import { useRouter } from "next/router";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { recordLearningActivity } from "@/utils/learningActivity";
-import { Play, RotateCcw, Clock, CheckCircle2 } from "lucide-react";
+import { Play, RotateCcw, Clock, WifiOff } from "lucide-react";
 
 const extractYouTubeId = (urlOrId: string) => {
   if (!urlOrId) return "";
@@ -39,47 +39,106 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   const currentTimeRef = useRef<number>(0);
   const durationRef = useRef<number>(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
 
+  const storageKey = `video_progress_${courseId}_${moduleIndex}`;
   const { savedTimestamp, saveProgress, clearProgress } = useVideoProgress(courseId, moduleIndex);
 
-  // Resume overlay state: show whenever savedTimestamp exists and is > 0
+  // Directly check localStorage to ensure instantaneous availability across any redirect
+  const readStorageTime = useCallback((): number => {
+    if (typeof window === 'undefined' || !courseId) return 0;
+    try {
+      const dataStr = localStorage.getItem(`video_progress_${courseId}_${moduleIndex}`);
+      if (dataStr) {
+        const data = JSON.parse(dataStr);
+        if (data && typeof data.timestamp === 'number' && data.timestamp >= 2) {
+          return data.timestamp;
+        }
+      }
+    } catch (e) {}
+    return 0;
+  }, [courseId, moduleIndex]);
+
+  // Active saved timestamp: either from hook or direct storage read
+  const [activeSavedTime, setActiveSavedTime] = useState<number>(() => {
+    return (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+  });
+
+  // Prompt state: show whenever a valid saved timestamp (>= 2s) exists
   const [showResumePrompt, setShowResumePrompt] = useState<boolean>(() => {
-    return !!savedTimestamp && savedTimestamp > 0;
+    const time = (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+    return time >= 2;
   });
 
   const [currentDisplayTime, setCurrentDisplayTime] = useState<number>(0);
   const [durationDisplay, setDurationDisplay] = useState<number>(0);
-  const [hasPromptBeenHandled, setHasPromptBeenHandled] = useState(false);
 
+  // Online status check for PWA/offline mode
   useEffect(() => {
-    if (savedTimestamp && savedTimestamp > 0 && !hasPromptBeenHandled) {
-      setShowResumePrompt(true);
-      currentTimeRef.current = savedTimestamp;
-      setCurrentDisplayTime(savedTimestamp);
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
     }
-  }, [savedTimestamp, hasPromptBeenHandled]);
+  }, []);
+
+  // Sync state whenever savedTimestamp changes or module switches
+  useEffect(() => {
+    const time = (savedTimestamp && savedTimestamp >= 2) ? savedTimestamp : readStorageTime();
+    if (time >= 2) {
+      setActiveSavedTime(time);
+      setShowResumePrompt(true);
+      currentTimeRef.current = time;
+      setCurrentDisplayTime(time);
+    } else {
+      setActiveSavedTime(0);
+      setShowResumePrompt(false);
+    }
+  }, [savedTimestamp, courseId, moduleIndex, readStorageTime]);
 
   // Synchronously flush the current position to localStorage
-  const flushCurrentProgress = () => {
+  const flushCurrentProgress = useCallback(() => {
+    let time = currentTimeRef.current;
+    let dur = durationRef.current;
     try {
       if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
-        const time = playerRef.current.getCurrentTime();
-        const duration = playerRef.current.getDuration() || durationRef.current;
-        if (time > 0) {
-          currentTimeRef.current = time;
-          durationRef.current = duration;
+        const playerTime = playerRef.current.getCurrentTime();
+        const playerDur = playerRef.current.getDuration ? playerRef.current.getDuration() : 0;
+        if (typeof playerTime === 'number' && playerTime > 0) {
+          time = playerTime;
+          currentTimeRef.current = playerTime;
+        }
+        if (typeof playerDur === 'number' && playerDur > 0) {
+          dur = playerDur;
+          durationRef.current = playerDur;
         }
       }
     } catch (e) {}
 
-    const time = currentTimeRef.current;
-    const dur = durationRef.current;
-    if (time > 0 && saveProgress) {
-      saveProgress(time, dur);
+    // Only save if meaningful progress (>= 2s) and not at the end of the video
+    if (time >= 2 && (!dur || time < dur - 3)) {
+      try {
+        const roundedTime = Math.round(time);
+        const data = {
+          timestamp: roundedTime,
+          duration: Math.round(dur || 0),
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        if (saveProgress) {
+          saveProgress(roundedTime, dur);
+        }
+      } catch (e) {}
     }
-  };
+  }, [courseId, moduleIndex, saveProgress, storageKey]);
 
-  // 1. Immediately pause video and save progress when user navigates away to another page
+  // 1. Immediately pause video and save progress when navigating away to another page (N times)
   useEffect(() => {
     const handleRouteChange = () => {
       if (playerRef.current) {
@@ -94,7 +153,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     return () => {
       router.events.off('routeChangeStart', handleRouteChange);
     };
-  }, [router, saveProgress]);
+  }, [router, flushCurrentProgress]);
 
   // 2. Pause video and save progress when user switches tabs or window is minimized
   useEffect(() => {
@@ -127,23 +186,20 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
-  }, [saveProgress]);
+  }, [flushCurrentProgress]);
 
-  // 3. Pause video and save progress on component unmount
+  // 3. Pause video and save progress on unmount (DO NOT call stopVideo as it clears playback state)
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      flushCurrentProgress();
       if (playerRef.current) {
         try {
           playerRef.current.pauseVideo();
-          if (typeof playerRef.current.stopVideo === 'function') {
-            playerRef.current.stopVideo();
-          }
         } catch (e) {}
       }
-      flushCurrentProgress();
     };
-  }, [saveProgress]);
+  }, [flushCurrentProgress]);
 
   const onReady = (event: any) => {
     playerRef.current = event.target;
@@ -155,8 +211,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       }
     } catch (e) {}
 
-    // If there is a saved progress prompt, ensure player is paused and ready
-    if (savedTimestamp && savedTimestamp > 0 && !hasPromptBeenHandled) {
+    // If there is an active resume prompt, ensure video is kept paused initially
+    const stored = readStorageTime();
+    if (stored >= 2) {
       try {
         event.target.pauseVideo();
       } catch (e) {}
@@ -175,9 +232,12 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     } catch (e) {}
 
     if (event.data === 1) { // Playing
-      // Only dismiss prompt if user has interacted or chose an action
-      if (hasPromptBeenHandled) {
-        setShowResumePrompt(false);
+      // If resume overlay is currently displayed, do not allow background autoplay
+      if (showResumePrompt) {
+        try {
+          player.pauseVideo();
+        } catch (e) {}
+        return;
       }
 
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -188,7 +248,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           if (time > 0) {
             currentTimeRef.current = time;
             setCurrentDisplayTime(time);
-            if (saveProgress) {
+            if (time >= 2 && saveProgress) {
               saveProgress(time, dur);
             }
             // Once user watches for 15+ seconds, record daily learning activity
@@ -207,7 +267,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
         if (time > 0) {
           currentTimeRef.current = time;
           setCurrentDisplayTime(time);
-          if (saveProgress) {
+          if (time >= 2 && saveProgress) {
             saveProgress(time, dur);
           }
         }
@@ -215,20 +275,30 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     } 
     else if (event.data === 0) { // Ended
       if (intervalRef.current) clearInterval(intervalRef.current);
-      currentTimeRef.current = 0;
-      setCurrentDisplayTime(0);
-      if (clearProgress) clearProgress();
+      const cur = currentTimeRef.current;
+      const dur = durationRef.current;
+      // Only clear if user genuinely reached the end of the video
+      if (dur > 0 && cur >= dur - 3) {
+        currentTimeRef.current = 0;
+        setCurrentDisplayTime(0);
+        setActiveSavedTime(0);
+        setShowResumePrompt(false);
+        if (clearProgress) clearProgress();
+        try {
+          localStorage.removeItem(storageKey);
+        } catch (e) {}
+        if (onComplete) onComplete();
+      }
       recordLearningActivity();
-      if (onComplete) onComplete();
     }
   };
 
   const handleResume = () => {
-    setHasPromptBeenHandled(true);
     setShowResumePrompt(false);
-    if (playerRef.current && savedTimestamp) {
+    const targetTime = activeSavedTime || readStorageTime();
+    if (playerRef.current && targetTime >= 2) {
       try {
-        playerRef.current.seekTo(savedTimestamp, true);
+        playerRef.current.seekTo(targetTime, true);
         playerRef.current.playVideo();
       } catch (e) {
         console.warn("Error seeking in player", e);
@@ -238,13 +308,16 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   };
 
   const handleStartOver = () => {
-    setHasPromptBeenHandled(true);
     setShowResumePrompt(false);
+    setActiveSavedTime(0);
     currentTimeRef.current = 0;
     setCurrentDisplayTime(0);
     if (clearProgress) {
       clearProgress();
     }
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
     if (playerRef.current) {
       try {
         playerRef.current.seekTo(0, true);
@@ -275,33 +348,63 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
   return (
     <div className="w-full flex flex-col space-y-3">
-      <div className="w-full aspect-video rounded-xl overflow-hidden shadow-xl relative bg-black border border-gray-800">
-        {/* Guaranteed Resume Watching Overlay */}
-        {showResumePrompt && savedTimestamp && savedTimestamp > 0 && (
-          <div className="absolute inset-0 z-30 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 transition-all">
-            <div className="bg-blue-600/20 text-blue-400 p-3 rounded-full mb-3 ring-1 ring-blue-500/40">
-              <Clock className="w-8 h-8" />
+      <div className="w-full aspect-video rounded-xl overflow-hidden shadow-xl relative bg-[#090d16] border border-gray-800">
+        {/* Offline Fallback Banner for Task 3 */}
+        {!isOnline && (
+          <div className="absolute inset-0 z-50 bg-[#0a0f1d] flex flex-col items-center justify-center p-6 text-center text-white">
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-full mb-3 text-amber-400">
+              <WifiOff className="w-8 h-8" />
             </div>
-            <h3 className="text-2xl font-bold mb-2 text-white">Resume Watching?</h3>
-            <p className="text-gray-300 text-sm mb-6 text-center max-w-sm">
-              You previously stopped at <span className="font-semibold text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/60">{formatTime(savedTimestamp)}</span>. Would you like to resume or restart?
+            <h3 className="text-xl font-bold mb-2">Offline Mode Active</h3>
+            <p className="text-gray-300 text-sm max-w-sm">
+              Video streaming requires an active internet connection. All course modules, syllabus materials, and your saved learning progress are available offline.
             </p>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-sm">
+          </div>
+        )}
+
+        {/* 100% Solid Opaque Resume Overlay (No YouTube Play Button or Text Bleed-Through) */}
+        {showResumePrompt && activeSavedTime >= 2 && (
+          <div 
+            id="video-resume-overlay"
+            className="absolute inset-0 z-40 bg-[#0a0f1d] flex flex-col items-center justify-center p-4 sm:p-6 text-center select-none shadow-2xl transition-all"
+          >
+            {/* Elegant Compact Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-xs font-semibold mb-2 sm:mb-3 shadow-xs">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Resume Available</span>
+            </div>
+
+            {/* Clear Heading */}
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1.5 tracking-tight">
+              Resume Watching?
+            </h3>
+
+            {/* Explanatory text */}
+            <p className="text-gray-300 text-xs sm:text-sm max-w-sm sm:max-w-md mb-4 sm:mb-5 leading-relaxed">
+              You previously stopped at{" "}
+              <span className="font-bold text-blue-300 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700/60 text-xs sm:text-sm">
+                {formatTime(activeSavedTime)}
+              </span>
+              . Would you like to resume or start from the beginning?
+            </p>
+
+            {/* Action Buttons: 100% Visible, Proportional, Never Cut Off */}
+            <div className="flex flex-row items-center justify-center gap-3 w-full max-w-sm sm:max-w-md px-2">
               <button 
                 id="btn-resume-watching"
                 onClick={handleResume}
-                className="w-full sm:flex-1 px-5 py-3 bg-[#0056D2] hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-blue-900/30 transition-all transform hover:scale-[1.02]"
+                className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-[#0056D2] hover:bg-blue-600 active:bg-blue-700 text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg shadow-blue-900/40 transition-all transform hover:scale-[1.02] cursor-pointer"
               >
-                <Play className="w-4 h-4 fill-current" />
-                <span>Resume from {formatTime(savedTimestamp)}</span>
+                <Play className="w-4 h-4 fill-current flex-shrink-0" />
+                <span className="truncate">Resume from {formatTime(activeSavedTime)}</span>
               </button>
               <button 
                 id="btn-start-beginning"
                 onClick={handleStartOver}
-                className="w-full sm:flex-1 px-5 py-3 bg-gray-800 hover:bg-gray-700 active:bg-gray-900 text-gray-200 hover:text-white rounded-lg font-semibold flex items-center justify-center space-x-2 border border-gray-700 transition-all transform hover:scale-[1.02]"
+                className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-gray-200 hover:text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 transition-all transform hover:scale-[1.02] cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span>Start from Beginning</span>
+                <RotateCcw className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">Start from Beginning</span>
               </button>
             </div>
           </div>
@@ -325,17 +428,18 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             Current position: <span className="font-medium text-gray-800">{formatTime(currentDisplayTime)}</span>
             {durationDisplay > 0 && ` / ${formatTime(durationDisplay)}`}
           </span>
-          {savedTimestamp && savedTimestamp > 0 && (
-            <span className="hidden sm:inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium ml-2">
-              Saved at {formatTime(savedTimestamp)}
+          {activeSavedTime >= 2 && (
+            <span className="hidden sm:inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium ml-2 border border-blue-200">
+              Saved at {formatTime(activeSavedTime)}
             </span>
           )}
         </div>
         
         {currentDisplayTime > 0 && (
           <button 
+            id="btn-quick-restart"
             onClick={handleStartOver}
-            className="text-gray-500 hover:text-blue-600 flex items-center space-x-1 transition-colors text-xs font-medium"
+            className="text-gray-500 hover:text-blue-600 flex items-center space-x-1 transition-colors text-xs font-medium cursor-pointer"
             title="Restart video from 0:00"
           >
             <RotateCcw className="w-3.5 h-3.5" />

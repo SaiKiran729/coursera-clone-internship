@@ -194,12 +194,59 @@ function CourseDetails() {
       </div>
     );
   }
+  useEffect(() => {
+    if (router.isReady && router.query.module !== undefined) {
+      const modIdx = parseInt(router.query.module as string, 10);
+      if (!isNaN(modIdx) && modIdx >= 0) {
+        setselectedmoduleindex(modIdx);
+        setshowmodulepage(true);
+      }
+    }
+  }, [router.isReady, router.query.module]);
+
+  const [resumableModule, setResumableModule] = useState<{ index: number; timestamp: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !course?.id || !course.modules) return;
+    const findResumable = () => {
+      for (let i = 0; i < course.modules.length; i++) {
+        try {
+          const item = localStorage.getItem(`video_progress_${course.id}_${i}`);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed && parsed.timestamp >= 2) {
+              setResumableModule({ index: i, timestamp: parsed.timestamp });
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      setResumableModule(null);
+    };
+    findResumable();
+  }, [course?.id, showmodulepage]);
+
   const Module = course.modules[selectedmoduleindex];
   const handlebackclick = () => {
     setshowmodulepage(false);
+    if (course?.id) {
+      router.replace(`/course/${course.id}`, undefined, { shallow: true });
+    }
   };
-  const handlemoduleclick = () => {
+  const handlemoduleclick = (targetIndex?: number) => {
+    const idx = typeof targetIndex === 'number' ? targetIndex : (resumableModule?.index ?? selectedmoduleindex);
+    setselectedmoduleindex(idx);
     setshowmodulepage(true);
+    if (course?.id) {
+      router.replace({ pathname: `/course/${course.id}`, query: { module: idx } }, undefined, { shallow: true });
+    }
+  };
+
+  const changeModule = (index: number) => {
+    setselectedmoduleindex(index);
+    if (course?.id) {
+      router.replace({ pathname: `/course/${course.id}`, query: { module: index } }, undefined, { shallow: true });
+    }
   };
 
   if (showmodulepage) {
@@ -298,7 +345,7 @@ function CourseDetails() {
               {course.modules.map((module, index) => (
                 <button
                   key={index}
-                  onClick={() => setselectedmoduleindex(index)}
+                  onClick={() => changeModule(index)}
                   className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
                     selectedmoduleindex === index ? "bg-blue-50" : ""
                   }`}
@@ -359,7 +406,7 @@ function CourseDetails() {
                 <div className="flex justify-between items-center mb-6">
                   <button
                     onClick={() =>
-                      setselectedmoduleindex(
+                      changeModule(
                         Math.max(0, selectedmoduleindex - 1)
                       )
                     }
@@ -391,7 +438,7 @@ function CourseDetails() {
 
                   <button
                     onClick={() =>
-                      setselectedmoduleindex(
+                      changeModule(
                         Math.min(
                           course.modules.length - 1,
                           selectedmoduleindex + 1
@@ -534,7 +581,7 @@ function CourseDetails() {
             </div>
             <button
               className="px-4 md:px-6 py-2 bg-[#0056D2] text-white font-semibold rounded-sm flex-shrink-0"
-              onClick={handlemoduleclick}
+              onClick={() => handlemoduleclick()}
             >
               Enroll Now
             </button>
@@ -598,10 +645,20 @@ function CourseDetails() {
               <div className="flex flex-wrap items-center gap-4 mb-8">
                 <button
                   className="px-8 py-3 bg-[#0056D2] text-white font-semibold rounded-sm hover:bg-blue-700 transition-colors"
-                  onClick={handlemoduleclick}
+                  onClick={() => handlemoduleclick()}
                 >
                   {isCompleted ? "Review Completed Course" : "Start Free Trial"}
                 </button>
+                {resumableModule && !isCompleted && (
+                  <button
+                    id="btn-resume-course-banner"
+                    onClick={() => handlemoduleclick(resumableModule.index)}
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-sm transition-colors flex items-center space-x-2 shadow-sm"
+                  >
+                    <PlayCircle className="w-5 h-5" />
+                    <span>Resume Module {resumableModule.index + 1} ({Math.floor(resumableModule.timestamp / 60)}:{(resumableModule.timestamp % 60).toString().padStart(2, '0')})</span>
+                  </button>
+                )}
                 {isCompleted && (
                   <div className="flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full font-medium text-sm">
                     <CheckCircle2 className="w-4 h-4 mr-1.5 text-green-600" />
@@ -747,7 +804,7 @@ function CourseDetails() {
 
                   <button
                     className="w-full px-4 py-3 bg-[#0056D2] text-white font-semibold rounded-sm hover:bg-blue-700 transition-colors mb-4"
-                    onClick={handlemoduleclick}
+                    onClick={() => handlemoduleclick()}
                   >
                     Start Free Trial
                   </button>

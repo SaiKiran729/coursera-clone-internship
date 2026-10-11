@@ -209,16 +209,19 @@ const Navbar = () => {
               </div>
             </div>
             <div className="flex items-center space-x-6">
-              {streak > 0 && (
-                <Link 
-                  href="/profile"
-                  className="flex items-center space-x-1 text-orange-600 font-bold bg-orange-50 hover:bg-orange-100 px-3 py-1 rounded-full border border-orange-200 transition-colors" 
-                  title="View Learning Streak & Badges"
-                >
-                  <Flame className="w-4 h-4 fill-current text-orange-500" />
-                  <span className="text-sm">{streak} Day Streak</span>
-                </Link>
-              )}
+              <Link 
+                href="/profile"
+                id="navbar-streak-badge"
+                className={`flex items-center space-x-1.5 font-bold px-3 py-1 rounded-full border transition-all text-xs sm:text-sm ${
+                  streak > 0 
+                    ? "text-orange-600 bg-orange-50 hover:bg-orange-100 border-orange-200 shadow-xs" 
+                    : "text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-200"
+                }`}
+                title={streak > 0 ? `Current Streak: ${streak} Days` : "Start your daily learning streak!"}
+              >
+                <Flame className={`w-4 h-4 ${streak > 0 ? "fill-current text-orange-500" : "text-gray-400"}`} />
+                <span>{streak > 0 ? `${streak} Day Streak` : '0 Day Streak'}</span>
+              </Link>
               
               <div className="relative hidden md:block">
                 <button

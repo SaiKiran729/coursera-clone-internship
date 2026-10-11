@@ -57,16 +57,17 @@ export function useVideoProgress(courseId: string, moduleIndex: number) {
       return;
     }
 
-    // Only save meaningful progress (> 1 second)
-    if (timestamp > 1) {
+    // Only save meaningful progress (>= 2 seconds)
+    if (timestamp >= 2) {
       try {
+        const roundedTime = Math.round(timestamp);
         const data: VideoProgressData = {
-          timestamp: Math.round(timestamp),
+          timestamp: roundedTime,
           duration: Math.round(duration || 0),
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem(storageKey, JSON.stringify(data));
-        setSavedTimestamp(Math.round(timestamp));
+        setSavedTimestamp(roundedTime);
       } catch (e) {
         console.warn("Could not save video progress", e);
       }
