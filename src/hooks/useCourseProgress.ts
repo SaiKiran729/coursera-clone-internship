@@ -24,7 +24,15 @@ export function useCourseProgress(courseId: string, totalModules: number) {
       const savedData = localStorage.getItem(storageKey);
       
       if (savedData) {
-        setProgress(JSON.parse(savedData));
+        const parsed = JSON.parse(savedData);
+        setProgress({
+          courseId,
+          completedModules: Array.isArray(parsed?.completedModules) ? parsed.completedModules : [],
+          currentModuleIndex: typeof parsed?.currentModuleIndex === 'number' ? parsed.currentModuleIndex : 0,
+          isCompleted: Boolean(parsed?.isCompleted),
+          completedAt: parsed?.completedAt,
+          lastActivityDate: parsed?.lastActivityDate
+        });
       } else {
         // Initialize for first-time users
         setProgress({

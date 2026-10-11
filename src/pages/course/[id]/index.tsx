@@ -48,15 +48,7 @@ function CourseDetails() {
   const router = useRouter();
   const queryId = router.query.id as string | undefined;
 
-  const [course, setCourse] = useState<Course | null>(() => {
-    if (typeof window !== 'undefined') {
-      const pathId = window.location.pathname.split('/course/')[1]?.split('?')[0];
-      if (pathId) {
-        return courses.find(c => c.id === pathId) || null;
-      }
-    }
-    return null;
-  });
+  const [course, setCourse] = useState<Course | null>(null);
 
   const [isOffline, setIsOffline] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -134,14 +126,24 @@ function CourseDetails() {
     if (!course) return;
 
     const permission = await requestNotificationPermission();
+    if (permission === 'unsupported') {
+      alert("Notifications are not supported in this browser. Please use Chrome, Edge, or Firefox.");
+      setShowReminderMenu(false);
+      return;
+    }
     if (permission === 'denied') {
-      alert("Browser notifications are blocked. Please allow them in your browser settings to use reminders.");
+      alert("Browser notifications are blocked. Please allow notifications in site settings to use reminders.");
+      setShowReminderMenu(false);
+      return;
+    }
+    if (permission !== 'granted') {
+      alert("Notification permission was not granted. Please allow notifications to receive reminders.");
       setShowReminderMenu(false);
       return;
     }
 
     const timestamp = Date.now() + Math.round(hours * 60 * 60 * 1000);
-    setReminder(course.id, timestamp);
+    setReminder(course.id, timestamp, course.title);
     setShowReminderMenu(false);
   };
 

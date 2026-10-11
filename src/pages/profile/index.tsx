@@ -243,7 +243,7 @@ const ProfilePage = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {allMilestones.map((milestone) => {
-                const isEarned = streakData.badges.includes(milestone.name) || streakData.currentStreak >= milestone.days;
+                const isEarned = (streakData?.badges || []).includes(milestone.name) || (streakData?.currentStreak || 0) >= milestone.days;
                 return (
                   <div
                     key={milestone.name}

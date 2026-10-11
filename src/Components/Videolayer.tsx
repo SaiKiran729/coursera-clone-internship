@@ -63,16 +63,11 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   // CRITICAL: Once handled or dismissed on this page, NEVER prompt again while user stays on the same page!
   const hasHandledPromptThisVisit = useRef<boolean>(false);
 
-  // Active saved timestamp captured AT MOUNT TIME
-  const [initialSavedTime, setInitialSavedTime] = useState<number>(() => {
-    return readStorageTime();
-  });
+  // Active saved timestamp initialized safely to 0 to prevent SSR/client hydration mismatch
+  const [initialSavedTime, setInitialSavedTime] = useState<number>(0);
 
-  // Prompt state: ONLY true on mount if initialSavedTime >= 2
-  const [showResumePrompt, setShowResumePrompt] = useState<boolean>(() => {
-    const time = readStorageTime();
-    return time >= 2;
-  });
+  // Prompt state: initialized safely to false, updated in useEffect after mount
+  const [showResumePrompt, setShowResumePrompt] = useState<boolean>(false);
 
   const [currentDisplayTime, setCurrentDisplayTime] = useState<number>(0);
   const [durationDisplay, setDurationDisplay] = useState<number>(0);

@@ -8,6 +8,20 @@
 
 ---
 
+## 📌 Quick Navigation for Mentors & Evaluators
+
+| Section | Description | Quick Jump Link |
+| :--- | :--- | :--- |
+| 🌐 **Live Deployed Site** | Public production deployment on Vercel (Zero auth required) | **[Open Live App](https://coursera-internship.vercel.app/)** |
+| 🗂️ **Codebase Structure** | Visual directory tree showing where all task files live | **[Jump to Codebase Structure](#3-codebase-structure--task-files-map)** |
+| 📂 **Task-to-Files Map** | Exact table mapping each of the 6 tasks to its source files | **[Jump to Task Files Table](#where-all-task-files-are-located-task-to-file-mapping)** |
+| 📋 **Task Implementations** | Detailed technical write-up for Tasks 1 through 6 | **[Jump to Detailed Implementations](#4-detailed-task-implementation-tasks-1-to-6)** |
+| 🧪 **Evaluation Process** | **Click-by-click instructions to test and verify every task** | **[Jump to Evaluation Process](#5-step-by-step-evaluation-process-for-mentors--reviewers)** |
+| 📱 **Device Responsiveness** | Breakdowns for Mobile, Tablet, Laptop, and Desktop | **[Jump to Device Responsiveness](#6-full-responsiveness-verification)** |
+| 📊 **Test Matrix** | Formal rubric and verification status (100% Pass) | **[Jump to Test Matrix](#7-verification--test-matrix)** |
+
+---
+
 ## 1. Project Overview & Training Foundation
 
 This document describes the technical architecture and implementation details for the **six internship tasks** integrated into the **Coursera Clone** application.
@@ -43,7 +57,86 @@ This submission strictly satisfies all guidelines provided for final evaluation:
 
 ---
 
-## 3. Detailed Task Implementation (Tasks 1 to 6)
+## 3. Codebase Structure & Task Files Map
+
+### Visual Directory Tree
+
+```
+coursera-clone/
+├── public/
+│   ├── favicon.ico
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── sw.js                      <-- [Task 3, Task 5] Service Worker (Offline Cache + Push Notifications)
+│   ├── vercel.svg
+│   └── window.svg
+├── src/
+│   ├── Components/
+│   │   ├── data/
+│   │   │   └── constant.ts        <-- Course catalogue data & structure
+│   │   ├── Fotter.tsx             <-- Responsive Footer
+│   │   ├── Navbar.tsx             <-- [Task 1, Task 4] Search bar, streak badge, responsive drawer
+│   │   └── Videolayer.tsx         <-- [Task 6] YouTube IFrame player, 16:9 overlay, auto-pause & resume
+│   ├── hooks/
+│   │   ├── useCourseProgress.ts   <-- [Task 2] Completion tracking & celebration trigger
+│   │   └── useVideoProgress.ts    <-- [Task 6] Video playback timestamp state & persistence
+│   ├── pages/
+│   │   ├── _app.tsx               <-- [Task 5] Global Service Worker registration & reminder timer engine
+│   │   ├── _document.tsx          <-- Viewport meta & theme-color for mobile responsiveness
+│   │   ├── certificate/
+│   │   │   └── index.tsx          <-- Certificate generator page
+│   │   ├── course/
+│   │   │   └── [id]/
+│   │   │       └── index.tsx      <-- [Task 2, Task 3, Task 5, Task 6] Main course page (Overview, Modules, Offline, Confetti, Reminders)
+│   │   ├── profile/
+│   │   │   └── index.tsx          <-- [Task 4] Learning streaks, milestone badges & interactive testing tools
+│   │   ├── search/
+│   │   │   └── index.tsx          <-- [Task 1] Real-time course search, multi-filters, empty state
+│   │   └── index.tsx              <-- Home page (hero, categories, popular courses)
+│   ├── styles/
+│   │   └── globals.css            <-- Responsive overflow hardening, typography, custom scrollbars
+│   └── utils/
+│       ├── date.ts                <-- [Task 4] Timezone-safe local date formatting
+│       ├── learningActivity.ts    <-- [Task 4] Daily streak calculation, badge thresholds & test simulators
+│       ├── notifications.ts       <-- [Task 5] Notification engine (ServiceWorker showNotification + Desktop fallback)
+│       └── offlineStorage.ts      <-- [Task 3] IndexedDB serialization for offline course access
+├── INTERNSHIP_TASKS.md            <-- Comprehensive Technical Specification, Verification & Submission Rules
+├── README.md                      <-- Main Project Documentation, Codebase Structure & Evaluator's Testing Guide
+├── next.config.ts                 <-- Next.js build configuration
+├── package.json                   <-- Dependencies and scripts
+├── tailwind.config.ts             <-- Tailwind design tokens
+└── tsconfig.json                  <-- TypeScript compiler configuration
+```
+
+---
+
+### Where All Task Files Are Located (Task-to-File Mapping)
+
+| Task | Feature | File Path | Role & Key Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **Task 1** | **Search & Filters** | `src/pages/search/index.tsx` | Main search page: instant text matching, multi-category & skill tag filters, URL query sync via `replaceState`, empty state with `#clear-all-filters-btn`, mobile filter drawer. |
+| | | `src/Components/Navbar.tsx` | Global navigation bar search input with immediate routing to `/search?q=...`. |
+| **Task 2** | **Completion Celebration** | `src/pages/course/[id]/index.tsx` | Renders `react-confetti` (600 pieces) and motivational modal; triggers celebration only when final module is marked complete; 4-second auto-dismiss. |
+| | | `src/hooks/useCourseProgress.ts` | Tracks completed module indices in `localStorage`; prevents duplicate confetti triggers upon page refresh; sanitized array safety. |
+| **Task 3** | **Offline Course Access** | `public/sw.js` | Service Worker caching shell (HTML, JS chunks, CSS) using Network-First strategy with offline fallback matching (`{ ignoreSearch: true }`). |
+| | | `src/utils/offlineStorage.ts` | Serializes course data, syllabus, and Base64 cover images into IndexedDB (`idb-keyval`). |
+| | | `src/pages/course/[id]/index.tsx` | "Download for Offline" button UI; pulls offline course data from IndexedDB when offline; offline video banner. |
+| **Task 4** | **Streaks & Badges** | `src/utils/learningActivity.ts` | Timezone-safe local date key calculation; streak increment logic; missed-day reset; badge unlock thresholds (3, 7, 14, 30 days); test simulators. |
+| | | `src/utils/date.ts` | Helper for `YYYY-MM-DD` local timezone date strings. |
+| | | `src/pages/profile/index.tsx` | Profile dashboard: displays active streak, longest streak, achievement badges grid, and interactive evaluator simulation tools. |
+| | | `src/Components/Navbar.tsx` | Live clickable flame badge (`🔥 [X] Day Streak`) updating in real-time via `streakUpdated` custom event. |
+| **Task 5** | **Course Reminders** | `src/utils/notifications.ts` | Notification engine: primary delivery via `ServiceWorkerRegistration.showNotification()` for Android Chrome compatibility; desktop `new Notification()` fallback; foreground `#course-reminder-toast` banner dispatch. |
+| | | `public/sw.js` | Service Worker notification event listeners (`notificationclick`, `push`). |
+| | | `src/pages/_app.tsx` | Registers Service Worker; calculates exact millisecond timer delta for scheduled reminders; handles foreground toast rendering. |
+| | | `src/pages/course/[id]/index.tsx` | Dual-location reminder dropdown menu (Course Overview hero + Sticky Module Page header); schedule/cancel actions; instant 5-second test reminder button. |
+| **Task 6** | **Video Progress & Resume** | `src/Components/Videolayer.tsx` | YouTube IFrame player wrapper; auto-pauses on route leave and tab switch; renders 100% solid 16:9 theater resume overlay ("Resume from MM:SS" / "Start from Beginning"). |
+| | | `src/hooks/useVideoProgress.ts` | Manages per-module timestamp state in `localStorage` (`video_progress_${courseId}_${moduleIndex}`); hydration-safe initialization. |
+| | | `src/pages/course/[id]/index.tsx` | Integrates `Videolayer` with module selector and course progress synchronization. |
+
+---
+
+## 4. Detailed Task Implementation (Tasks 1 to 6)
 
 ---
 
@@ -178,14 +271,19 @@ Schedule and cancel reminders for unfinished courses.
 - ✅ Check notification delivery after the scheduled time.
 
 #### Implementation Details
-- **Location:** `src/pages/course/[id]/index.tsx`, `src/utils/notifications.ts`, and `src/pages/_app.tsx`
+- **Location:** `src/pages/course/[id]/index.tsx`, `src/utils/notifications.ts`, `public/sw.js`, and `src/pages/_app.tsx`
 - **Dual Location Placement:** The reminder bell option is available on **both the Course Overview hero and the Sticky Module Page header**.
 - **Available Intervals:**
   - *"Remind me in 1 hour"* (adds 1 hour)
   - *"Remind me tomorrow"* (adds 24 hours)
   - *"⚡ Test Reminder (in 5 sec)"* (specifically added for instant evaluation verification)
   - *"Cancel Reminder"* (clears the scheduled alert)
-- **Notification Evaluation:** `src/pages/_app.tsx` evaluates pending reminders every 5 seconds and on the `remindersUpdated` event. If a reminder's time has passed, a native desktop browser notification triggers: *"Coursera Clone Reminder: It's time to continue your learning journey!"*.
+- **Multi-Platform Notification Delivery Engine:**
+  - **Android Chrome & PWA Compatibility:** Android Chrome strictly forbids the direct `new Notification()` constructor (throwing `TypeError: Illegal constructor`). Reminders are dispatched via `ServiceWorkerRegistration.showNotification()` via `navigator.serviceWorker.ready`, enabling system notifications in the Android notification drawer.
+  - **Desktop Chrome / Edge / Firefox Fallback:** If the Service Worker is unavailable, automatically falls back to `new Notification()` wrapped in error guards.
+  - **In-App Toast Banner:** Simultaneously dispatches a foreground custom event `courseReminderFired`, rendering a high-visibility animated toast banner (`#course-reminder-toast`) on both mobile and desktop with course title and direct *"Continue Learning"* action.
+  - **Precise Timer Scheduling:** Instead of coarse polling, `_app.tsx` computes the exact millisecond delta for the earliest scheduled reminder and arms a precise `setTimeout`, backed by a 3-second safety polling interval.
+  - **Permission Enforcement:** Validates `Notification.permission === 'granted'` before persisting reminders or displaying *"Reminder Set"*, providing clear feedback if notifications are blocked.
 - **Auto-Cancellation:** Completing a course automatically purges pending reminders for that course.
 
 ---
@@ -224,7 +322,130 @@ Save the last watched position and allow users to resume or restart videos.
 
 ---
 
-## 4. Full Responsiveness Verification
+## 5. Step-by-Step Evaluation Process for Mentors & Reviewers
+
+Mentors and evaluators can verify all six tasks directly on the live production site ([https://coursera-internship.vercel.app/](https://coursera-internship.vercel.app/)) by following these exact steps:
+
+```
+                               EVALUATION WORKFLOW
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Task 1: Search & Filter     ──►  Live URL: /search                         │
+│  Task 2: Celebration         ──►  Complete final module in any course       │
+│  Task 3: Offline Access      ──►  Download course ──► Test in Airplane Mode │
+│  Task 4: Streaks & Badges    ──►  Live URL: /profile ──► Test simulation    │
+│  Task 5: Reminders           ──►  Course header ──► "Test Reminder (5 sec)" │
+│  Task 6: Video Resume        ──►  Play video ──► Leave ──► Return & Resume  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 📍 Quick Evaluation URL Cheat Sheet
+
+| Task | Test Page URL | Primary Test Action |
+| :--- | :--- | :--- |
+| **Task 1** | `https://coursera-internship.vercel.app/search` | Search "Python", filter by Category, test "Clear all filters" |
+| **Task 2** | `https://coursera-internship.vercel.app/course/microsoft-front-end` | Mark modules complete; verify confetti on final module only |
+| **Task 3** | `https://coursera-internship.vercel.app/course/microsoft-front-end` | Click "Download for Offline" → Turn on Airplane mode → Reload |
+| **Task 4** | `https://coursera-internship.vercel.app/profile` | Click "Simulate 7-Day Streak" → Check 7-Day badge unlock |
+| **Task 5** | `https://coursera-internship.vercel.app/course/microsoft-front-end` | Click "Set Reminder" → Click "Test Reminder (in 5 sec)" |
+| **Task 6** | `https://coursera-internship.vercel.app/course/microsoft-front-end` | Play video 20s → Go to Profile → Return → Click "Resume from 0:20" |
+
+---
+
+### 🔍 Test 1: Real-Time Course Search & Filtering (Task 1)
+1. Navigate to **[https://coursera-internship.vercel.app/search](https://coursera-internship.vercel.app/search)** or type in the Navbar search box.
+2. **Text Search Test:** Type `"Microsoft"` or `"machine learning"`.
+   - *Expected:* Matching courses appear instantly without any full-page reload. The URL updates smoothly with `?q=...`.
+3. **Category & Tag Filter Test:** Check **"Professional Certificate"** under Categories, and check **"React"** under Skill Tags.
+   - *Expected:* Only courses matching both the category and selected skill tags display.
+4. **Empty State & Reset Test:** In the search input, type `"zzzzzzz"`.
+   - *Expected:* The "No courses found" illustration displays with a prominent **"Clear all filters"** button (`id="clear-all-filters-btn"`).
+5. Click **"Clear all filters"**.
+   - *Expected:* Search query, categories, and tags reset, restoring all courses immediately.
+
+---
+
+### 🎉 Test 2: Course Completion Celebration (Task 2)
+1. Open any incomplete course, such as **`/course/microsoft-front-end`**.
+2. Click **"Start Free Trial"** or **"Enroll Now"** to enter the module player.
+3. Click **"Mark as Complete"** on early modules (notice that completing early modules does **not** trigger confetti).
+4. Mark the **final module** as complete:
+   - *Expected:* A full-screen confetti burst drops across the screen and a celebration modal appears displaying:
+     > *"Great Job! You've completed all modules for Microsoft Front-End Developer!"*
+5. Wait **4 seconds** (or click the modal close button / backdrop):
+   - *Expected:* The celebration modal automatically dismisses cleanly.
+6. **Refresh the page:**
+   - *Expected:* The course shows **"Completed"**, the button reads **"Completed"**, and confetti **does NOT replay**.
+
+---
+
+### 📴 Test 3: Offline Course Access (Task 3)
+1. While connected to the internet, open any course overview page (e.g., `/course/microsoft-front-end`).
+2. Click **"Download for Offline"**.
+   - *Expected:* Download indicator displays, then changes to a green **"Available Offline"** indicator.
+3. **Simulate Offline Mode:**
+   - On Mobile: Turn on **Airplane Mode** (disconnect Wi-Fi and mobile data).
+   - On Desktop Chrome: Open DevTools (`F12`) → **Network** tab → change throttling dropdown from *No throttling* to **Offline**.
+4. Close the browser tab.
+5. In a new tab, open the exact same course URL: `https://coursera-internship.vercel.app/course/microsoft-front-end`.
+   - *Expected:* The course loads without an `ERR_INTERNET_DISCONNECTED` screen. Course title, provider, syllabus descriptions, and modules are completely accessible.
+6. Refresh the page while still offline:
+   - *Expected:* The page reloads successfully from cache. (If a video module is opened, the player displays the friendly *"Offline Mode Active — Video streaming requires an internet connection"* banner).
+
+---
+
+### 🔥 Test 4: Daily Learning Streak & Badges (Task 4)
+1. Navigate to **[https://coursera-internship.vercel.app/profile](https://coursera-internship.vercel.app/profile)**.
+2. Observe the **Current Streak**, **Longest Streak**, and **Last Active Date** statistics cards.
+3. Scroll down to the **Achievements & Badges** grid:
+   - Badges: **3-Day Streak**, **7-Day Streak** *(required milestone)*, **14-Day**, and **30-Day**.
+4. **Instant Evaluator Verification Tools:** Under the *Streak Testing & Verification Tools* card:
+   - Click **"Simulate 7-Day Streak"**:
+     - *Expected:* Current streak sets to 7, and the **7-Day Streak** badge unlocks instantly with a gold border and "UNLOCKED" tag. The Navbar flame badge updates to `🔥 7 Day Streak`.
+   - Click **"Simulate Missed Day"**:
+     - *Expected:* Simulates 2 inactive days; Current Streak resets to `0` as required by daily streak rules.
+   - Click **"Simulate Active Yesterday"**:
+     - *Expected:* Sets streak to 6 from yesterday. Completing any lesson or clicking "Record Today's Activity" advances the streak to 7 and unlocks the milestone.
+   - Click **"Reset Streak"**:
+     - *Expected:* Resets data cleanly back to 0.
+
+---
+
+### ⏰ Test 5: Course Reminders & Browser Notifications (Task 5)
+1. Open any unfinished course (overview or module page).
+2. Click **"Set Reminder"** in the header.
+3. In the dropdown menu, select **"⚡ Test Reminder (in 5 sec)"**.
+4. If your browser prompts for notification permission, click **"Allow"**.
+   - *Expected:* Button immediately updates to **"Reminder Set"** with the scheduled time.
+5. **Wait exactly 5 seconds:**
+   - *Expected on Android Chrome & Desktop:* A system notification triggers via Service Worker with title:
+     > **Coursera Reminder 🎓**  
+     > *Time to continue your learning journey in "[Course Name]"!*
+   - *Expected In-App:* A floating toast banner (`#course-reminder-toast`) slides in with course information and a direct **"Continue Learning →"** link.
+6. Click **"Cancel Reminder"** in the dropdown:
+   - *Expected:* The reminder is removed and the button returns to "Set Reminder".
+
+---
+
+### ⏯️ Test 6: Video Progress & Resume (Task 6)
+1. Open any course module containing a video (e.g. Module 1 of `/course/microsoft-front-end`).
+2. Press play and let the video run for **20 to 30 seconds**.
+3. **Navigate away:** Click **"Back to Courses"** or open the `/profile` page.
+   - *Expected:* The video **pauses immediately with zero background audio leaks**.
+4. Return to the exact same module video.
+   - *Expected:* A solid 16:9 theater overlay appears displaying:
+     > **Resume Watching**  
+     > *Pick up where you left off. You previously stopped at 0:25. Would you like to resume or start from the beginning?*  
+     > `[ ▶ Resume from 0:25 ]`  `[ ↺ Start from Beginning ]`
+5. Click **"Resume from 0:25"**:
+   - *Expected:* Playback seeks to 0:25 and resumes smoothly.
+6. Leave and return again; click **"Start from Beginning"**:
+   - *Expected:* Playback restarts at 0:00 and saved timestamp resets.
+7. Switch to Module 2:
+   - *Expected:* Progress is tracked independently per module; Module 2 starts from 0:00 without inheriting Module 1's time.
+
+---
+
+## 6. Full Responsiveness Verification
 
 The application layout has been rigorously verified on:
 - **Mobile Devices (360px – 480px):** Tested on iPhone SE, iPhone 14/15, Samsung Galaxy. Search filters, video aspect ratio, module lists, and reminder dropdowns render without horizontal overflow.
@@ -233,7 +454,7 @@ The application layout has been rigorously verified on:
 
 ---
 
-## 5. Verification & Test Matrix
+## 7. Verification & Test Matrix
 
 | Task | Test Case | Target Result | Actual Result | Status |
 |---|---|---|---|---|
@@ -265,9 +486,9 @@ The application layout has been rigorously verified on:
 
 ---
 
-## 6. Pre-Submission Final Verification
+## 8. Pre-Submission Final Verification
 
-- ✅ Built directly on the training project codebase.
+- ✅ Built directly on the training project codebase (`BitHeadmr/coursera-clone`).
 - ✅ All 6 internship tasks implemented pin-to-pin.
 - ✅ Zero compilation or TypeScript errors (`npx tsc --noEmit` clean).
 - ✅ Production build generated cleanly (`npm run build` static generation complete).
@@ -275,7 +496,6 @@ The application layout has been rigorously verified on:
 - ✅ Live deployment tested in incognito mode (zero authentication barriers).
 - ✅ Responsive layout verified across mobile, tablet, and desktop viewports.
 - ✅ README.md and INTERNSHIP_TASKS.md fully updated with all rules and documentation.
-- ✅ Final Git commit created and pushed to the remote repository.
 
 ---
 

@@ -11,21 +11,7 @@ interface VideoProgressData {
 export function useVideoProgress(courseId: string, moduleIndex: number) {
   const storageKey = `${PROGRESS_PREFIX}${courseId}_${moduleIndex}`;
 
-  const [savedTimestamp, setSavedTimestamp] = useState<number | null>(() => {
-    if (typeof window === 'undefined' || !courseId) return null;
-    try {
-      const dataStr = localStorage.getItem(storageKey);
-      if (dataStr) {
-        const data: VideoProgressData = JSON.parse(dataStr);
-        if (data && typeof data.timestamp === 'number' && data.timestamp > 0) {
-          return data.timestamp;
-        }
-      }
-    } catch (e) {
-      console.warn("Could not read initial video progress", e);
-    }
-    return null;
-  });
+  const [savedTimestamp, setSavedTimestamp] = useState<number | null>(null);
 
   useEffect(() => {
     if (!courseId) return;

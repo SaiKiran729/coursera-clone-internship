@@ -35,6 +35,15 @@ export function getStreakData(): StreakData {
     const data = localStorage.getItem(STREAK_KEY);
     if (data) {
       const parsed: StreakData = JSON.parse(data);
+      if (!Array.isArray(parsed.badges)) {
+        parsed.badges = [];
+      }
+      if (typeof parsed.currentStreak !== 'number' || isNaN(parsed.currentStreak)) {
+        parsed.currentStreak = 0;
+      }
+      if (typeof parsed.longestStreak !== 'number' || isNaN(parsed.longestStreak)) {
+        parsed.longestStreak = 0;
+      }
       // If user missed more than 1 day, the current active streak has reset to 0
       if (parsed.lastActivityDate) {
         const today = getLocalDateKey();
