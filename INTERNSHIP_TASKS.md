@@ -210,12 +210,15 @@ Save the last watched position and allow users to resume or restart videos.
 - **Auto-Pause on Navigation (Zero Background Audio):**
   - Listens to Next.js route transitions (`router.events.on('routeChangeStart')`). When leaving the page, the player **pauses immediately and flushes the exact timestamp to `localStorage`**.
   - Listens to `document.visibilitychange`: switching browser tabs or minimizing automatically pauses the video.
-  - Component unmount triggers `pauseVideo()`, `stopVideo()`, and flushes progress.
-- **Guaranteed Resume Overlay:**
-  - When returning to a video with saved progress (>0s), a high-contrast frosted modal overlays the player:
-    - **Resume from MM:SS** (with Play icon) — seeks to timestamp and plays.
-    - **Start from Beginning** (with RotateCcw icon) — seeks to 0:00, resets saved progress, and plays.
-  - Player stays paused until the user makes their choice.
+  - Component unmount triggers `pauseVideo()` and flushes progress synchronously.
+- **100% Solid Opaque Theater Overlay (Zero Bleed-Through):**
+  - Solid dark theater backdrop (`#090d16`, `zIndex: 50`) prevents YouTube title, channel logo, or white play buttons from bleeding through.
+  - Generous 16:9 theater dimensions (`min-h-[240px] sm:min-h-[380px] md:min-h-[450px]`) ensure the video is never squished or letterboxed.
+  - Displays high-contrast buttons:
+    - **Resume from MM:SS** (Solid Coursera Blue `#0056D2`, bold white text) — seeks to timestamp and plays.
+    - **Start from Beginning** (Solid dark slate `#1e293b`, crisp white text `#f8fafc`) — seeks to 0:00, resets saved progress, and plays.
+  - **Intelligent Session-Scoped Prompting:** The prompt appears upon route entry or return; once the user begins watching, the prompt **never repeats while staying on the same page**, allowing uninterrupted viewing.
+  - **Multi-Redirect Persistence ($N$ Times):** Whenever the user redirects to other pages and returns $N$ times, the resume prompt is guaranteed to appear $N$ times with the exact saved position.
 - **Independent Module Progress:** Storage keys are partitioned by `video_progress_${courseId}_${moduleIndex}`, ensuring modules never overwrite each other.
 - **Real-Time Progress Bar:** Below the player, a live status bar displays the current position (`MM:SS / MM:SS`) and a quick *"Restart (0:00)"* button.
 

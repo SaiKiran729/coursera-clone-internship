@@ -10,6 +10,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Initialize query from URL on load
   useEffect(() => {
@@ -104,9 +105,20 @@ export default function SearchPage() {
         <h1 className="text-3xl font-bold mb-8 text-gray-900">Explore Courses</h1>
         
         <div className="flex flex-col md:flex-row gap-8">
+          {/* Mobile Filter Toggle Button */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="w-full flex items-center justify-between p-3.5 bg-white rounded-lg border border-gray-200 font-semibold text-gray-800 shadow-xs"
+            >
+              <span>Filters {hasActiveFilters && `(${selectedCategories.length + selectedTags.length} active)`}</span>
+              <span className="text-xs text-blue-600 font-bold">{showMobileFilters ? "Hide Filters ▲" : "Show Filters ▼"}</span>
+            </button>
+          </div>
+
           {/* Filters Sidebar */}
-          <div className="w-full md:w-64 flex-shrink-0">
-            <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
+          <div className={`w-full md:w-64 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
+            <div className="bg-white p-6 rounded-lg shadow-sm space-y-6 border border-gray-100">
               <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
                 {hasActiveFilters && (

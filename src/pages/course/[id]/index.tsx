@@ -28,7 +28,8 @@ import {
   Trash2,
   Bell,
   BellRing,
-  TrendingUp
+  TrendingUp,
+  X
 } from "lucide-react";
 import { useRouter } from "next/router";
 import { Course, courses } from "@/Components/data/constant";
@@ -534,12 +535,37 @@ function CourseDetails() {
 
         {/* Confetti Celebration Modal */}
         {showConfetti && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+          <div 
+            id="celebration-modal"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 cursor-pointer"
+            onClick={() => setShowConfetti(false)}
+          >
             <Confetti recycle={false} numberOfPieces={600} gravity={0.15} />
-            <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md transform transition-all animate-bounce border-2 border-yellow-200">
-              <Award className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Great Job!</h2>
-              <p className="text-gray-600 text-lg">You've completed this course!</p>
+            <div 
+              className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full relative transform transition-all animate-bounce border-2 border-yellow-300 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button 
+                id="btn-close-celebration"
+                onClick={() => setShowConfetti(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-300">
+                <Award className="w-12 h-12 text-yellow-600" />
+              </div>
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Great Job! 🎉</h2>
+              <p className="text-gray-600 text-lg mb-6">
+                You've completed all modules for <span className="font-semibold text-gray-900">{course.title}</span>!
+              </p>
+              <button
+                onClick={() => setShowConfetti(false)}
+                className="w-full py-3 bg-[#0056D2] hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+              >
+                Continue Learning
+              </button>
             </div>
           </div>
         )}
