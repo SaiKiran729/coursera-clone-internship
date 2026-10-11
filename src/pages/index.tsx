@@ -116,170 +116,96 @@ const index = () => {
     { number: "175+", label: "Countries" },
   ];
   return (
-    <div>
-      <div className="bg-[#F3F4F5] py-2">
+    <div className="overflow-x-hidden">
+      {/* Top Banner */}
+      <div className="bg-[#F3F4F5] py-2.5">
         <div className="max-w-7xl mx-auto px-4">
-          <p className="text-sm text-center">
+          <p className="text-xs sm:text-sm text-center leading-relaxed">
             Learn from Adobe experts, gain graphic design skills, and build a
             portfolio that gets you noticed.
-            <a href="#" className="text-[#0056D2] ml-1 hover:underline">
+            <Link href="/search" className="text-[#0056D2] ml-1.5 font-medium hover:underline">
               Learn today!
-            </a>
-            <button className="ml-2 text-gray-500">×</button>
+            </Link>
           </p>
         </div>
       </div>
 
+      {/* Hero Section */}
       <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 py-16">
-          <div className="flex justify-between items-center">
-            <div className="max-w-xl">
-              <h1 className="text-5xl font-bold text-gray-900 mb-6">
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12 lg:py-16">
+          <div className="flex flex-col-reverse lg:flex-row justify-between items-center gap-8 lg:gap-12">
+            <div className="w-full lg:max-w-xl text-center lg:text-left">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 mb-4 sm:mb-6 leading-tight tracking-tight">
                 Learn without limits
               </h1>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
                 Start, switch, or advance your career with more than 10,000
                 courses, Professional Certificates, and degrees from world-class
                 universities and companies.
               </p>
-              <div className="flex space-x-4">
-                <button className="px-6 py-3 bg-[#0056D2] text-white font-semibold rounded-sm">
+              <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 justify-center lg:justify-start">
+                <Link
+                  href="/search"
+                  className="px-6 py-3.5 bg-[#0056D2] text-white font-semibold rounded-md hover:bg-blue-700 transition-colors text-center shadow-xs min-h-[44px] flex items-center justify-center"
+                >
                   Join for Free
-                </button>
-                <button className="px-6 py-3 border border-[#0056D2] text-[#0056D2] font-semibold rounded-sm">
+                </Link>
+                <Link
+                  href="/search"
+                  className="px-6 py-3.5 border border-[#0056D2] text-[#0056D2] font-semibold rounded-md hover:bg-blue-50 transition-colors text-center min-h-[44px] flex items-center justify-center"
+                >
                   Try Coursera for Business
-                </button>
+                </Link>
               </div>
             </div>
-            <div>
+            <div className="w-full lg:w-auto flex justify-center">
               <img
                 src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80"
                 alt="Student"
-                className="w-[500px] h-auto rounded-lg"
+                className="w-full max-w-sm sm:max-w-md lg:max-w-[500px] h-auto rounded-xl shadow-md object-cover"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white py-16">
+      {/* Most Popular Certificates */}
+      <div className="bg-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold">Most Popular Certificates</h2>
-            <div className="flex space-x-4">
-              <button className="px-4 py-2 border text-[#0056D2] font-semibold rounded-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Most Popular Certificates</h2>
+            <div className="flex space-x-3">
+              <Link href="/search" className="px-4 py-2 border border-gray-300 text-[#0056D2] font-semibold rounded-md hover:bg-blue-50 text-sm transition-colors">
                 Show more
-              </button>
-              <button className="px-4 py-2 text-[#0056D2] font-semibold">
+              </Link>
+              <Link href="/search" className="px-4 py-2 text-[#0056D2] font-semibold text-sm hover:underline">
                 View all
-              </button>
+              </Link>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {certificates.map((cert, index) => (
-              <div
+              <Link
                 key={index}
-                className="border rounded-sm overflow-hidden hover:shadow-lg transition-shadow"
+                href="/search"
+                className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white group"
               >
                 <img
                   src={cert.image}
                   alt={cert.title}
-                  className="w-full h-40 object-cover"
+                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="p-4">
+                <div className="p-4 sm:p-5 flex flex-col flex-1">
                   <div className="flex items-center mb-2">
-                    <Server className="h-6 w-6 mr-2 text-blue-600" />
-                    <span className="text-sm text-gray-600">
+                    <Server className="h-5 w-5 mr-2 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 font-medium">
                       {cert.provider}
                     </span>
                   </div>
-                  <h3 className="font-semibold mb-2">{cert.title}</h3>
-                  <p className="text-sm text-gray-600">{cert.type}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#F3F4F5] py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-start mb-8">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">
-                Get started with GenAI
-              </h2>
-              <p className="text-gray-600">
-                Identify, develop, and execute impactful GenAI business
-                strategies.
-              </p>
-            </div>
-            <button className="ml-auto px-4 py-2 text-[#0056D2] font-semibold">
-              View all GenAI
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-6">
-            {genAICourses.map((course, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-sm overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <img
-                  src={course.image}
-                  alt={course.title}
-                  className="w-full h-40 object-cover"
-                />
-                <div className="p-4">
-                  <div className="flex items-center mb-2">
-                    <BrainCircuit className="h-6 w-6 mr-2 text-blue-600" />
-                    <span className="text-sm text-gray-600">
-                      {course.provider}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-600">{course.type}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">New on Coursera</h2>
-              <p className="text-gray-600">
-                Explore our newest programs, focused on delivering in-demand
-                skills.
-              </p>
-            </div>
-            <button className="px-4 py-2 text-[#0056D2] font-semibold">
-              View all
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-6">
-            {newCourses.map((course, index) => (
-              <Link
-                key={index}
-                href={`/course/${course.id}`}
-                className="border rounded-sm overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <img
-                  src={course.image}
-                  alt={course.title}
-                  className="w-full h-40 object-cover"
-                />
-                <div className="p-4">
-                  <div className="flex items-center mb-2">
-                    <Laptop className="h-6 w-6 mr-2 text-blue-600" />
-                    <span className="text-sm text-gray-600">
-                      {course.provider}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-600">{course.type}</p>
+                  <h3 className="font-semibold text-base mb-2 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                    {cert.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-auto">{cert.type}</p>
                 </div>
               </Link>
             ))}
@@ -287,43 +213,140 @@ const index = () => {
         </div>
       </div>
 
-      <div className="bg-gray-50 py-12">
+      {/* Get started with GenAI */}
+      <div className="bg-[#F3F4F5] py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8 text-center">
-            Explore Top Categories
-          </h2>
-          <div className="grid grid-cols-3 gap-6">
-            {categories.map((category, index) => (
-              <div
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900">
+                Get started with GenAI
+              </h2>
+              <p className="text-gray-600 text-sm sm:text-base">
+                Identify, develop, and execute impactful GenAI business
+                strategies.
+              </p>
+            </div>
+            <Link href="/search?q=AI" className="px-4 py-2 text-[#0056D2] font-semibold text-sm hover:underline self-start sm:self-auto">
+              View all GenAI
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {genAICourses.map((course, index) => (
+              <Link
                 key={index}
-                className="flex items-center p-6 bg-white rounded-lg hover:shadow-md cursor-pointer"
+                href="/search?q=AI"
+                className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow flex flex-col group"
               >
-                <category.icon className="h-8 w-8 text-[#0056D2] mr-4" />
-                <div>
-                  <h3 className="font-semibold text-lg">{category.name}</h3>
-                  <p className="text-gray-600 text-sm">{category.count}</p>
+                <img
+                  src={course.image}
+                  alt={course.title}
+                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="p-4 sm:p-5 flex flex-col flex-1">
+                  <div className="flex items-center mb-2">
+                    <BrainCircuit className="h-5 w-5 mr-2 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                      {course.provider}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-base mb-2 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-auto">{course.type}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="bg-[#0056D2] text-white py-16">
+      {/* New on Coursera */}
+      <div className="bg-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900">New on Coursera</h2>
+              <p className="text-gray-600 text-sm sm:text-base">
+                Explore our newest programs, focused on delivering in-demand
+                skills.
+              </p>
+            </div>
+            <Link href="/search" className="px-4 py-2 text-[#0056D2] font-semibold text-sm hover:underline self-start sm:self-auto">
+              View all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {newCourses.map((course, index) => (
+              <Link
+                key={index}
+                href={`/course/${course.id}`}
+                className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow flex flex-col bg-white group"
+              >
+                <img
+                  src={course.image}
+                  alt={course.title}
+                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="p-4 sm:p-5 flex flex-col flex-1">
+                  <div className="flex items-center mb-2">
+                    <Laptop className="h-5 w-5 mr-2 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                      {course.provider}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-base mb-2 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-auto">{course.type}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Explore Top Categories */}
+      <div className="bg-gray-50 py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center text-gray-900">
+            Explore Top Categories
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {categories.map((category, index) => (
+              <Link
+                key={index}
+                href={`/search?q=${encodeURIComponent(category.name)}`}
+                className="flex items-center p-4 sm:p-6 bg-white rounded-xl border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+              >
+                <div className="p-3 bg-blue-50 rounded-lg mr-4 group-hover:bg-blue-100 transition-colors">
+                  <category.icon className="h-6 w-6 sm:h-7 sm:w-7 text-[#0056D2]" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base sm:text-lg text-gray-900 group-hover:text-[#0056D2] transition-colors">{category.name}</h3>
+                  <p className="text-gray-500 text-xs sm:text-sm">{category.count}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Stats */}
+      <div className="bg-[#0056D2] text-white py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">
               Join the World's Largest Learning Platform
             </h2>
-            <p className="text-blue-100">
+            <p className="text-blue-100 text-sm sm:text-base">
               Transform your life through education
             </p>
           </div>
-          <div className="grid grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-4xl font-bold mb-2">{stat.number}</div>
-                <div className="text-blue-100">{stat.label}</div>
+              <div key={index} className="text-center p-2">
+                <div className="text-3xl sm:text-4xl font-extrabold mb-1 sm:mb-2">{stat.number}</div>
+                <div className="text-blue-100 text-xs sm:text-sm">{stat.label}</div>
               </div>
             ))}
           </div>

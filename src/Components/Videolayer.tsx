@@ -7,21 +7,21 @@ import { Play, RotateCcw, Clock, WifiOff, X } from "lucide-react";
 
 const extractYouTubeId = (urlOrId: string) => {
   if (!urlOrId) return "";
-  
+
   // Clean up full URLs
   const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = urlOrId.match(regExp);
   if (match && match[2].length === 11) {
     return match[2];
   }
-  
+
   // Clean up query params from raw IDs
   const idOnly = urlOrId.split('?')[0];
   if (idOnly.length === 11) {
     return idOnly;
   }
 
-  return urlOrId; 
+  return urlOrId;
 };
 
 interface VideolayerProps {
@@ -264,7 +264,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           }
         } catch (e) {}
       }, 1000);
-    } 
+    }
     else if (event.data === 2) { // Paused
       if (intervalRef.current) clearInterval(intervalRef.current);
       try {
@@ -278,7 +278,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           }
         }
       } catch (e) {}
-    } 
+    }
     else if (event.data === 0) { // Ended
       if (intervalRef.current) clearInterval(intervalRef.current);
       const cur = currentTimeRef.current;
@@ -358,7 +358,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
   return (
     <div className="w-full flex flex-col space-y-3">
       {/* Theater Container with guaranteed aspect-ratio and generous responsive minimum height */}
-      <div 
+      <div
         className="w-full aspect-video min-h-[240px] sm:min-h-[380px] md:min-h-[450px] rounded-2xl overflow-hidden shadow-2xl relative bg-[#090d16] border border-gray-800"
         style={{
           width: '100%',
@@ -368,7 +368,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       >
         {/* Offline Fallback Banner for Task 3 */}
         {!isOnline && (
-          <div 
+          <div
             style={{
               position: 'absolute',
               inset: 0,
@@ -395,7 +395,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
         {/* 100% Solid Opaque Resume Overlay: NEVER shows while user is in the same page watching; ONLY shows on route re-entry */}
         {showResumePrompt && initialSavedTime >= 2 && (
-          <div 
+          <div
             id="video-resume-overlay"
             style={{
               position: 'absolute',
@@ -413,7 +413,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             }}
           >
             {/* Pill Badge */}
-            <div 
+            <div
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -433,7 +433,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             </div>
 
             {/* Clear Heading */}
-            <h3 
+            <h3
               style={{
                 fontSize: '1.5rem',
                 fontWeight: 700,
@@ -446,7 +446,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             </h3>
 
             {/* Explanatory text */}
-            <p 
+            <p
               style={{
                 color: '#94a3b8',
                 fontSize: '0.875rem',
@@ -456,7 +456,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
               }}
             >
               You previously stopped at{" "}
-              <span 
+              <span
                 style={{
                   fontWeight: 700,
                   color: '#93c5fd',
@@ -471,79 +471,34 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
               . Would you like to resume or start from the beginning?
             </p>
 
-            {/* Action Buttons: 100% Solid, High Contrast, Guaranteed Visibility */}
-            <div 
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.875rem',
-                width: '100%',
-                maxWidth: '26rem',
-              }}
+            {/* Action Buttons: 100% Solid, High Contrast, Guaranteed Visibility & Responsive Stacking */}
+            <div
+              className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3.5 w-full max-w-md px-2"
             >
-              <button 
+              <button
                 id="btn-resume-watching"
                 onClick={handleResume}
-                style={{
-                  flex: 1,
-                  padding: '0.85rem 1.25rem',
-                  backgroundColor: '#0056D2',
-                  color: '#ffffff',
-                  borderRadius: '0.5rem',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(0, 86, 210, 0.4)',
-                  transition: 'background-color 0.15s ease',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#00419e')}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#0056D2')}
+                className="w-full sm:flex-1 py-3 px-4 bg-[#0056D2] hover:bg-[#00419e] text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 border-0 cursor-pointer shadow-md transition-colors min-h-[44px]"
               >
-                <Play style={{ width: '1rem', height: '1rem', fill: 'currentColor' }} />
+                <Play className="w-4 h-4 fill-current flex-shrink-0" />
                 <span>Resume from {formatTime(initialSavedTime)}</span>
               </button>
 
-              <button 
+              <button
                 id="btn-start-beginning"
                 onClick={handleStartOver}
-                style={{
-                  flex: 1,
-                  padding: '0.85rem 1.25rem',
-                  backgroundColor: '#1e293b',
-                  color: '#f8fafc',
-                  borderRadius: '0.5rem',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  border: '1px solid #334155',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#334155')}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#1e293b')}
+                className="w-full sm:flex-1 py-3 px-4 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#334155] cursor-pointer transition-colors min-h-[44px]"
               >
-                <RotateCcw style={{ width: '1rem', height: '1rem' }} />
+                <RotateCcw className="w-4 h-4 flex-shrink-0" />
                 <span>Start from Beginning</span>
               </button>
             </div>
           </div>
         )}
 
-        <YouTube 
-          videoId={parsedId} 
-          opts={opts} 
+        <YouTube
+          videoId={parsedId}
+          opts={opts}
           onReady={onReady}
           onStateChange={onStateChange}
           className="w-full h-full absolute inset-0"
@@ -566,9 +521,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
             </span>
           )}
         </div>
-        
+
         {currentDisplayTime > 0 && (
-          <button 
+          <button
             id="btn-quick-restart"
             onClick={handleStartOver}
             className="text-gray-500 hover:text-blue-600 flex items-center space-x-1 transition-colors text-xs font-medium cursor-pointer"

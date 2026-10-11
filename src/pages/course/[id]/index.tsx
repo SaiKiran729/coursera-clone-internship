@@ -47,7 +47,7 @@ function CourseDetails() {
   const [showmodulepage, setshowmodulepage] = useState(false);
   const router = useRouter();
   const queryId = router.query.id as string | undefined;
-  
+
   const [course, setCourse] = useState<Course | null>(() => {
     if (typeof window !== 'undefined') {
       const pathId = window.location.pathname.split('/course/')[1]?.split('?')[0];
@@ -57,7 +57,7 @@ function CourseDetails() {
     }
     return null;
   });
-  
+
   const [isOffline, setIsOffline] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -132,7 +132,7 @@ function CourseDetails() {
 
   const handleSetReminder = async (hours: number) => {
     if (!course) return;
-    
+
     const permission = await requestNotificationPermission();
     if (permission === 'denied') {
       alert("Browser notifications are blocked. Please allow them in your browser settings to use reminders.");
@@ -151,23 +151,23 @@ function CourseDetails() {
     setShowReminderMenu(false);
   };
 
-  const { 
-    progress, 
-    markModuleComplete, 
-    isCompleted, 
-    completedModules 
+  const {
+    progress,
+    markModuleComplete,
+    isCompleted,
+    completedModules
   } = useCourseProgress(course?.id || "", course?.modules.length || 0);
-  
+
   const [showConfetti, setShowConfetti] = useState(false);
 
   const handleMarkComplete = (index: number) => {
     if (!course) return;
     markModuleComplete(index);
-    
+
     // Check if this action makes the course complete
-    const isNewlyCompleted = !completedModules.includes(index) && 
+    const isNewlyCompleted = !completedModules.includes(index) &&
                              completedModules.length + 1 >= course.modules.length;
-                             
+
     if (isNewlyCompleted && !isCompleted) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
@@ -253,36 +253,37 @@ function CourseDetails() {
   if (showmodulepage) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        <header className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between">
-          <div className="flex items-center">
+        <header className="bg-white border-b border-gray-200 py-3 sm:py-4 px-3 sm:px-6 flex items-center justify-between gap-2">
+          <div className="flex items-center min-w-0">
             <button
               onClick={handlebackclick}
-              className="flex items-center text-gray-700 hover:text-blue-600 transition-colors mr-4"
+              className="flex items-center text-gray-700 hover:text-blue-600 transition-colors mr-2 sm:mr-4 flex-shrink-0 min-h-[44px]"
             >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              <span className="font-medium">Back to Courses</span>
+              <ArrowLeft className="h-5 w-5 mr-1 sm:mr-2" />
+              <span className="font-medium text-sm sm:text-base hidden sm:inline">Back to Courses</span>
+              <span className="font-medium text-sm sm:hidden">Back</span>
             </button>
-            <h1 className="text-xl font-semibold text-gray-800 ml-2 truncate max-w-md">
+            <h1 className="text-sm sm:text-lg md:text-xl font-semibold text-gray-800 truncate max-w-[140px] sm:max-w-xs md:max-w-md">
               {course.title}
             </h1>
           </div>
-          
+
           {!isCompleted && (
-            <div className="relative z-50">
-              <button 
+            <div className="relative z-50 flex-shrink-0">
+              <button
                 onClick={() => setShowReminderMenu(!showReminderMenu)}
-                className={`flex items-center px-4 py-2 rounded-full border transition-colors ${
-                  reminderAt 
+                className={`flex items-center px-3 sm:px-4 py-2 rounded-full border transition-colors min-h-[40px] ${
+                  reminderAt
                     ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                     : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 {reminderAt ? (
-                  <BellRing className="h-5 w-5 mr-2 text-blue-600" />
+                  <BellRing className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2 text-blue-600" />
                 ) : (
-                  <Bell className="h-5 w-5 mr-2" />
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5 sm:mr-2" />
                 )}
-                <span className="text-sm font-medium hidden sm:inline">
+                <span className="text-xs sm:text-sm font-medium hidden sm:inline">
                   {reminderAt ? "Reminder Set" : "Set Reminder"}
                 </span>
               </button>
@@ -301,26 +302,26 @@ function CourseDetails() {
                       </span>
                     </div>
                   )}
-                  <button 
+                  <button
                     onClick={() => handleSetReminder(1)}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     Remind me in 1 hour
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleSetReminder(24)}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     Remind me tomorrow
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleSetReminder(5 / 3600)}
                     className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
                   >
                     ⚡ Test Reminder (in 5 sec)
                   </button>
                   {reminderAt && (
-                    <button 
+                    <button
                       onClick={handleCancelReminder}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
                     >
@@ -477,10 +478,10 @@ function CourseDetails() {
                 </div>
                 {Module.videoId && (
                   <div className="mb-8">
-                    <Videolayer 
+                    <Videolayer
                       key={`${course.id}-${selectedmoduleindex}`}
-                      videoId={Module.videoId} 
-                      title={Module.title} 
+                      videoId={Module.videoId}
+                      title={Module.title}
                       courseId={course.id}
                       moduleIndex={selectedmoduleindex}
                       onComplete={() => handleMarkComplete(selectedmoduleindex)}
@@ -498,7 +499,7 @@ function CourseDetails() {
                 <h4 className="font-medium text-gray-800 mb-4">
                   Module Details
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex items-center mb-2">
                       <Clock className="h-5 w-5 text-blue-600 mr-2" />
@@ -535,17 +536,17 @@ function CourseDetails() {
 
         {/* Confetti Celebration Modal */}
         {showConfetti && (
-          <div 
+          <div
             id="celebration-modal"
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 cursor-pointer"
             onClick={() => setShowConfetti(false)}
           >
             <Confetti recycle={false} numberOfPieces={600} gravity={0.15} />
-            <div 
+            <div
               className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full relative transform transition-all animate-bounce border-2 border-yellow-300 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
-              <button 
+              <button
                 id="btn-close-celebration"
                 onClick={() => setShowConfetti(false)}
                 className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -573,18 +574,18 @@ function CourseDetails() {
     );
   }
   const fullDescription = `
-    Prepare for a career in the high-growth field of data analytics, no experience or degree required. 
+    Prepare for a career in the high-growth field of data analytics, no experience or degree required.
     Get professional training designed by Google and have the opportunity to connect with top employers.
-    
-    Data analytics is the collection, transformation, and organization of data in order to draw conclusions, 
-    make predictions, and drive informed decision making. Over 8 courses, gain in-demand skills that prepare 
-    you for an entry-level job. You'll learn from Google employees whose foundations in data analytics 
+
+    Data analytics is the collection, transformation, and organization of data in order to draw conclusions,
+    make predictions, and drive informed decision making. Over 8 courses, gain in-demand skills that prepare
+    you for an entry-level job. You'll learn from Google employees whose foundations in data analytics
     served as launchpads for their own careers.
-    
-    This program includes over 180 hours of instruction and hundreds of practice-based assessments, which 
-    will help you simulate real-world data analytics scenarios that are critical for success in the workplace. 
-    The content is highly interactive and exclusively developed by Google employees with decades of 
-    experience in data analytics. Through a mix of videos, assessments, and hands-on labs, you'll get 
+
+    This program includes over 180 hours of instruction and hundreds of practice-based assessments, which
+    will help you simulate real-world data analytics scenarios that are critical for success in the workplace.
+    The content is highly interactive and exclusively developed by Google employees with decades of
+    experience in data analytics. Through a mix of videos, assessments, and hands-on labs, you'll get
     introduced to analysis tools and platforms and key analytical skills required for an entry-level job.
   `;
 
@@ -716,11 +717,11 @@ function CourseDetails() {
                   <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <Share2 className="h-6 w-6 text-gray-600" />
                   </button>
-                  <button 
+                  <button
                     onClick={handleOfflineToggle}
                     disabled={isDownloading}
                     className={`flex items-center px-4 py-2 rounded-full border transition-colors ${
-                      isOffline 
+                      isOffline
                         ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
                         : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                     }`}
@@ -740,10 +741,10 @@ function CourseDetails() {
 
                   {!isCompleted && (
                     <div className="relative">
-                      <button 
+                      <button
                         onClick={() => setShowReminderMenu(!showReminderMenu)}
                         className={`flex items-center px-4 py-2 rounded-full border transition-colors ${
-                          reminderAt 
+                          reminderAt
                             ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                             : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                         }`}
@@ -772,26 +773,26 @@ function CourseDetails() {
                               </span>
                             </div>
                           )}
-                          <button 
+                          <button
                             onClick={() => handleSetReminder(1)}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             Remind me in 1 hour
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleSetReminder(24)}
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             Remind me tomorrow
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleSetReminder(5 / 3600)}
                             className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
                           >
                             ⚡ Test Reminder (in 5 sec)
                           </button>
                           {reminderAt && (
-                            <button 
+                            <button
                               onClick={handleCancelReminder}
                               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
                             >
@@ -986,25 +987,25 @@ function CourseDetails() {
                 </button>
 
                 {selectedModule === index && (
-                  <div className="px-6 pb-6 pt-2 border-t">
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-600">Duration</p>
-                        <p className="font-semibold">{module.weeks} weeks</p>
+                  <div className="px-4 sm:px-6 pb-6 pt-2 border-t">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                        <p className="text-xs sm:text-sm text-gray-600">Duration</p>
+                        <p className="font-semibold text-sm sm:text-base">{module.weeks} weeks</p>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-600">Learning Hours</p>
-                        <p className="font-semibold">{module.hours} hours</p>
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                        <p className="text-xs sm:text-sm text-gray-600">Learning Hours</p>
+                        <p className="font-semibold text-sm sm:text-base">{module.hours} hours</p>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-600">Projects</p>
-                        <p className="font-semibold">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                        <p className="text-xs sm:text-sm text-gray-600">Projects</p>
+                        <p className="font-semibold text-sm sm:text-base">
                           {module.projects} hands-on
                         </p>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-600">Assessments</p>
-                        <p className="font-semibold">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                        <p className="text-xs sm:text-sm text-gray-600">Assessments</p>
+                        <p className="font-semibold text-sm sm:text-base">
                           {module.quizzes} quizzes
                         </p>
                       </div>
@@ -1020,30 +1021,30 @@ function CourseDetails() {
       {/* Testimonials */}
       <div className="py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8">Learner Success Stories</h2>
-          <div className="grid grid-cols-2 gap-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-gray-900">Learner Success Stories</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {course.testimonials.map((testimonial, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-100"
               >
                 <div className="flex items-start space-x-4 mb-4">
                   <img
                     src={testimonial.image}
                     alt={testimonial.author}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover flex-shrink-0"
                   />
                   <div>
-                    <h3 className="font-semibold text-lg">
+                    <h3 className="font-semibold text-base sm:text-lg text-gray-900">
                       {testimonial.author}
                     </h3>
-                    <p className="text-gray-600">{testimonial.role}</p>
-                    <p className="text-sm text-[#0056D2]">
+                    <p className="text-gray-600 text-sm">{testimonial.role}</p>
+                    <p className="text-xs sm:text-sm text-[#0056D2] font-medium mt-0.5">
                       {testimonial.impact}
                     </p>
                   </div>
                 </div>
-                <blockquote className="text-gray-600 italic">
+                <blockquote className="text-gray-600 italic text-sm sm:text-base leading-relaxed">
                   "{testimonial.quote}"
                 </blockquote>
               </div>
@@ -1055,25 +1056,25 @@ function CourseDetails() {
       {/* FAQ Section */}
       <div className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-gray-900">
             Frequently Asked Questions
           </h2>
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">
+              <div className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+                <h3 className="font-semibold text-base sm:text-lg mb-2 text-gray-900">
                   Do I need prior experience?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
                   No prior experience is required. This program is designed for
                   beginners and will teach you everything from the ground up.
                 </p>
               </div>
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">
+              <div className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+                <h3 className="font-semibold text-base sm:text-lg mb-2 text-gray-900">
                   How long does it take to complete?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
                   The program typically takes 6 months to complete with 10
                   hours/week of study. You can learn at your own pace and adjust
                   the schedule to your needs.
@@ -1081,24 +1082,23 @@ function CourseDetails() {
               </div>
             </div>
             <div className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">
+              <div className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+                <h3 className="font-semibold text-base sm:text-lg mb-2 text-gray-900">
                   What kind of support is available?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
                   You'll have access to a global learner community, course
                   mentors, and technical support throughout your learning
                   journey.
                 </p>
               </div>
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">
+              <div className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
+                <h3 className="font-semibold text-base sm:text-lg mb-2 text-gray-900">
                   Is the certificate recognized?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
                   Yes, upon completion you'll receive an industry-recognized
-                  certificate from Google that you can share with prospective
-                  employers.
+                  certificate that you can share with prospective employers.
                 </p>
               </div>
             </div>
@@ -1107,27 +1107,55 @@ function CourseDetails() {
       </div>
 
       {/* Start Learning CTA */}
-      <div className="bg-[#0056D2] text-white py-16">
+      <div className="bg-[#0056D2] text-white py-12 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to Start Your Data Analytics Journey?
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">
+            Ready to Start Your Learning Journey?
           </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Join 1.7M+ learners and launch your career in data analytics
+          <p className="text-base sm:text-xl text-blue-100 mb-6 sm:mb-8 max-w-2xl mx-auto">
+            Join millions of learners worldwide and launch your high-growth career today
           </p>
-          <button className="px-8 py-3 bg-white text-[#0056D2] font-semibold rounded-sm hover:bg-gray-100 transition-colors">
+          <button
+            onClick={() => handlemoduleclick()}
+            className="px-8 py-3.5 bg-white text-[#0056D2] font-bold rounded-md hover:bg-gray-100 transition-colors shadow-md min-h-[44px]"
+          >
             Enroll Now
           </button>
         </div>
       </div>
+
       {/* Confetti Celebration Modal */}
       {showConfetti && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+        <div
+          id="celebration-modal-overview"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 cursor-pointer"
+          onClick={() => setShowConfetti(false)}
+        >
           <Confetti recycle={false} numberOfPieces={600} gravity={0.15} />
-          <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md transform transition-all animate-bounce border-2 border-yellow-200">
-            <Award className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Great Job!</h2>
-            <p className="text-gray-600 text-lg">You've completed this course!</p>
+          <div
+            className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl text-center max-w-md w-full relative transform transition-all animate-bounce border-2 border-yellow-300 cursor-default max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowConfetti(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-300">
+              <Award className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-600" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">Great Job! 🎉</h2>
+            <p className="text-gray-600 text-base sm:text-lg mb-6">
+              You've completed all modules for <span className="font-semibold text-gray-900">{course.title}</span>!
+            </p>
+            <button
+              onClick={() => setShowConfetti(false)}
+              className="w-full py-3 bg-[#0056D2] hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors min-h-[44px]"
+            >
+              Continue Learning
+            </button>
           </div>
         </div>
       )}

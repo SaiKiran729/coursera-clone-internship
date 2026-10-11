@@ -15,14 +15,14 @@ import {
   Play
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
-import { 
-  getStreakData, 
-  recordLearningActivity, 
-  simulateStreak, 
-  simulateMissedDay, 
-  simulateYesterdayActive, 
+import {
+  getStreakData,
+  recordLearningActivity,
+  simulateStreak,
+  simulateMissedDay,
+  simulateYesterdayActive,
   resetStreakData,
-  StreakData 
+  StreakData
 } from "@/utils/learningActivity";
 import { getLocalDateKey } from "@/utils/date";
 
@@ -154,40 +154,40 @@ const ProfilePage = () => {
     },
   ];
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8">
+        <div className="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100">
           <div className="flex flex-col md:flex-row justify-between gap-4 md:mb-6">
-            <div className="flex flex-col sm:flex-row gap-4 sm:space-x-4">
-              <img src={user.image} alt="" className="w-24 h-24 rounded-full" />
+            <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:space-x-4">
+              <img src={user.image} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-gray-100" />
               <div>
-                <h1 className="text-2xl font-bold">{user.name}</h1>
-                <p className="text-gray-600">{user.title}</p>
-                <div className="flex items-center space-x-2 mt-2 text-gray-500">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{user.name}</h1>
+                <p className="text-gray-600 text-sm sm:text-base">{user.title}</p>
+                <div className="flex items-center justify-center sm:justify-start space-x-2 mt-1.5 text-gray-500 text-xs sm:text-sm">
                   <MapPin className="h-4 w-4" />
                   <span>{user.location}</span>
                 </div>
               </div>
             </div>
-            <div className="flex space-x-3">
-              <button className="flex-1 md:flex-none flex justify-center items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
+            <div className="flex space-x-3 w-full sm:w-auto">
+              <button className="flex-1 sm:flex-none flex justify-center items-center space-x-1.5 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium min-h-[40px]">
                 <Share2 className="h-4 w-4" />
                 <span>Share</span>
               </button>
-              <button className="flex-1 md:flex-none flex justify-center items-center space-x-2 px-4 py-2 border rounded-md hover:bg-gray-50">
+              <button className="flex-1 sm:flex-none flex justify-center items-center space-x-1.5 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium min-h-[40px]">
                 <Pencil className="h-4 w-4" />
                 <span>Edit Profile</span>
               </button>
             </div>
           </div>
-          <p className="text-gray-600">{user.bio}</p>
-          <div className="flex items-center space-x-6 mt-4">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-5 w-5 text-gray-400" />
+          <p className="text-gray-600 text-sm sm:text-base mt-4 leading-relaxed">{user.bio}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-6 mt-4 text-xs sm:text-sm">
+            <div className="flex items-center space-x-2 text-gray-700">
+              <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
               <span>{user.company}</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <GraduationCap className="h-5 w-5 text-gray-400" />
+            <div className="flex items-center space-x-2 text-gray-700">
+              <GraduationCap className="h-4 w-4 text-gray-400 flex-shrink-0" />
               <span>{user.education}</span>
             </div>
           </div>
@@ -211,14 +211,14 @@ const ProfilePage = () => {
               </span>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-orange-50 border border-orange-200/80 p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-xs">
               <Flame className="h-9 w-9 text-orange-500 mb-2 fill-current" />
               <span className="text-3xl font-extrabold text-gray-900" id="current-streak-value">{streakData.currentStreak}</span>
               <span className="text-xs font-medium text-gray-600 mt-1">Current Streak (Days)</span>
             </div>
-            
+
             <div className="bg-blue-50 border border-blue-200/80 p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-xs">
               <Flame className="h-9 w-9 text-blue-500 mb-2" />
               <span className="text-3xl font-extrabold text-gray-900">{streakData.longestStreak}</span>
@@ -240,17 +240,17 @@ const ProfilePage = () => {
               <Award className="w-5 h-5 mr-2 text-yellow-600" />
               Streak Milestones & Badges
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {allMilestones.map((milestone) => {
                 const isEarned = streakData.badges.includes(milestone.name) || streakData.currentStreak >= milestone.days;
                 return (
-                  <div 
+                  <div
                     key={milestone.name}
                     id={`badge-${milestone.days}-day`}
                     className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
-                      isEarned 
-                        ? "bg-gradient-to-br from-yellow-50 to-amber-50/50 border-yellow-300 shadow-sm" 
+                      isEarned
+                        ? "bg-gradient-to-br from-yellow-50 to-amber-50/50 border-yellow-300 shadow-sm"
                         : "bg-gray-50/70 border-gray-200 opacity-60"
                     }`}
                   >
@@ -308,7 +308,7 @@ const ProfilePage = () => {
                 <Award className="w-3.5 h-3.5 mr-1.5" />
                 Simulate 7-Day Streak (Unlock 7-Day Badge)
               </button>
-              
+
               <button
                 id="btn-test-simulate-missed"
                 onClick={handleSimulateMissed}

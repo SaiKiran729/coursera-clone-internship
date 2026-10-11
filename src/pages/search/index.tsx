@@ -51,13 +51,13 @@ export default function SearchPage() {
   }, []);
 
   const handleCategoryToggle = (category: string) => {
-    setSelectedCategories(prev => 
+    setSelectedCategories(prev =>
       prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
     );
   };
 
   const handleTagToggle = (tag: string) => {
-    setSelectedTags(prev => 
+    setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   };
@@ -76,19 +76,19 @@ export default function SearchPage() {
   const filteredCourses = useMemo(() => {
     return courses.filter(course => {
       const searchLower = query.toLowerCase().trim();
-      
-      const searchMatch = !searchLower || 
-        (course.title && course.title.toLowerCase().includes(searchLower)) || 
+
+      const searchMatch = !searchLower ||
+        (course.title && course.title.toLowerCase().includes(searchLower)) ||
         (course.description && course.description.toLowerCase().includes(searchLower)) ||
         (course.modules && course.modules.some(m => m.description && m.description.toLowerCase().includes(searchLower))) ||
         (course.skills && course.skills.some(skill => skill.toLowerCase().includes(searchLower)));
-        
-      const categoryMatch = selectedCategories.length === 0 || 
+
+      const categoryMatch = selectedCategories.length === 0 ||
         (course.type && selectedCategories.includes(course.type));
 
-      const tagMatch = selectedTags.length === 0 || 
+      const tagMatch = selectedTags.length === 0 ||
         selectedTags.every(tag => course.skills && course.skills.includes(tag));
-        
+
       return searchMatch && categoryMatch && tagMatch;
     });
   }, [query, selectedCategories, selectedTags]);
@@ -103,7 +103,7 @@ export default function SearchPage() {
 
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold mb-8 text-gray-900">Explore Courses</h1>
-        
+
         <div className="flex flex-col md:flex-row gap-8">
           {/* Mobile Filter Toggle Button */}
           <div className="md:hidden">
@@ -118,27 +118,27 @@ export default function SearchPage() {
 
           {/* Filters Sidebar */}
           <div className={`w-full md:w-64 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
-            <div className="bg-white p-6 rounded-lg shadow-sm space-y-6 border border-gray-100">
+            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm space-y-6 border border-gray-100">
               <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
                 {hasActiveFilters && (
-                  <button 
+                  <button
                     onClick={clearFilters}
-                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center font-medium"
+                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center font-medium min-h-[36px]"
                   >
                     <FilterX className="h-4 w-4 mr-1" />
                     Clear
                   </button>
                 )}
               </div>
-              
+
               {/* Category Filter */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Categories</h3>
-                <div className="space-y-2">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Categories</h3>
+                <div className="space-y-2.5">
                   {allCategories.map(cat => (
-                    <label key={cat} className="flex items-center space-x-3 cursor-pointer group">
-                      <input 
+                    <label key={cat} className="flex items-center space-x-3 cursor-pointer group min-h-[28px]">
+                      <input
                         type="checkbox"
                         checked={selectedCategories.includes(cat)}
                         onChange={() => handleCategoryToggle(cat)}
@@ -154,11 +154,11 @@ export default function SearchPage() {
 
               {/* Skill Tags Filter */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Skill Tags</h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Skill Tags</h3>
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-2">
                   {allTags.map(tag => (
-                    <label key={tag} className="flex items-center space-x-3 cursor-pointer group">
-                      <input 
+                    <label key={tag} className="flex items-center space-x-3 cursor-pointer group min-h-[28px]">
+                      <input
                         type="checkbox"
                         checked={selectedTags.includes(tag)}
                         onChange={() => handleTagToggle(tag)}
@@ -176,30 +176,30 @@ export default function SearchPage() {
 
           {/* Search and Results */}
           <div className="flex-1">
-            <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex items-center border border-gray-200">
-              <Search className="h-5 w-5 text-gray-400 mr-3" />
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-sm mb-6 flex items-center border border-gray-200">
+              <Search className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
               <input
                 type="text"
                 placeholder="Search by course title or description..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 outline-none text-gray-700"
+                className="flex-1 outline-none text-gray-700 text-sm sm:text-base bg-transparent"
               />
               {query && (
-                <button onClick={clearSearch} className="p-1 hover:bg-gray-100 rounded-full text-gray-500">
+                <button onClick={clearSearch} className="p-1 hover:bg-gray-100 rounded-full text-gray-500 min-h-[36px] min-w-[36px] flex items-center justify-center">
                   <X className="h-5 w-5" />
                 </button>
               )}
             </div>
 
             <div className="mb-6 flex items-center justify-between">
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-sm sm:text-base">
                 Showing <span className="font-semibold text-gray-900">{filteredCourses.length}</span> results
               </p>
             </div>
 
             {filteredCourses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCourses.map((course) => (
                   <Link
                     key={course.id}
@@ -250,7 +250,7 @@ export default function SearchPage() {
                 <p className="text-gray-500 mb-6">
                   We couldn't find any courses matching your search criteria. Try adjusting your filters or search terms.
                 </p>
-                <button 
+                <button
                   id="clear-all-filters-btn"
                   onClick={() => {
                     clearSearch();
