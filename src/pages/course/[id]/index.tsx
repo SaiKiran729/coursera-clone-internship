@@ -27,7 +27,8 @@ import {
   Loader2,
   Trash2,
   Bell,
-  BellRing
+  BellRing,
+  TrendingUp
 } from "lucide-react";
 import { useRouter } from "next/router";
 import { Course, courses } from "@/Components/data/constant";
@@ -44,17 +45,48 @@ function CourseDetails() {
   const [selectedmoduleindex, setselectedmoduleindex] = useState(0);
   const [showmodulepage, setshowmodulepage] = useState(false);
   const router = useRouter();
-  const { id } = router.query; // Get course ID from route
-  const [course, setCourse] = useState<Course | null>(null);
+  const queryId = router.query.id as string | undefined;
+  
+  const [course, setCourse] = useState<Course | null>(() => {
+    if (typeof window !== 'undefined') {
+      const pathId = window.location.pathname.split('/course/')[1]?.split('?')[0];
+      if (pathId) {
+        return courses.find(c => c.id === pathId) || null;
+      }
+    }
+    return null;
+  });
   
   const [isOffline, setIsOffline] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
-    if (course?.id) {
-      checkIsOffline(course.id).then(setIsOffline);
-    }
-  }, [course?.id]);
+    const activeId = queryId || (typeof window !== 'undefined' ? window.location.pathname.split('/course/')[1]?.split('?')[0] : '');
+    if (!activeId) return;
+
+    import('@/utils/offlineStorage').then(({ getOfflineCourse, checkIsOffline }) => {
+      checkIsOffline(activeId).then(setIsOffline);
+      getOfflineCourse(activeId).then(offlineData => {
+        if (offlineData) {
+          const foundCourse = courses.find((c) => c.id === activeId);
+          setCourse({
+            ...offlineData,
+            image: offlineData.offlineImage || offlineData.image,
+            careerOutcomes: offlineData.careerOutcomes?.map((outcome, idx) => ({
+              ...outcome,
+              icon: foundCourse?.careerOutcomes?.[idx]?.icon || TrendingUp
+            })) || []
+          });
+          setIsOffline(true);
+        } else {
+          const foundCourse = courses.find((c) => c.id === activeId);
+          if (foundCourse) {
+            setCourse(foundCourse);
+          }
+        }
+      });
+    });
+  }, [router.isReady, queryId]);
 
   const handleOfflineToggle = async () => {
     if (!course) return;
@@ -107,7 +139,7 @@ function CourseDetails() {
       return;
     }
 
-    const timestamp = Date.now() + hours * 60 * 60 * 1000;
+    const timestamp = Date.now() + Math.round(hours * 60 * 60 * 1000);
     setReminder(course.id, timestamp);
     setShowReminderMenu(false);
   };
@@ -137,36 +169,30 @@ function CourseDetails() {
                              
     if (isNewlyCompleted && !isCompleted) {
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 5000);
+      setTimeout(() => setShowConfetti(false), 4000);
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      import('@/utils/offlineStorage').then(({ getOfflineCourse }) => {
-        getOfflineCourse(id as string).then(offlineData => {
-          if (offlineData) {
-            // If we have offline data, use it (and its cached image)
-            const foundCourse = courses.find((c) => c.id === id);
-            setCourse({
-              ...offlineData,
-              image: offlineData.offlineImage || offlineData.image,
-              careerOutcomes: offlineData.careerOutcomes?.map((outcome, idx) => ({
-                ...outcome,
-                icon: foundCourse?.careerOutcomes?.[idx]?.icon
-              })) || []
-            });
-            setIsOffline(true);
-          } else {
-            const foundCourse = courses.find((c) => c.id === id);
-            setCourse(foundCourse || null);
-          }
-        });
-      });
-    }
-  }, [id]);
   if (!course) {
-    return <div className="text-center text-red-500">Course not found!</div>;
+    if (!router.isReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-3" />
+            <p className="text-gray-600 font-medium">Loading course content...</p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Course Not Found</h2>
+        <p className="text-gray-600 mb-6">We couldn't locate this course.</p>
+        <button onClick={() => router.push('/')} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+          Back to Courses
+        </button>
+      </div>
+    );
   }
   const Module = course.modules[selectedmoduleindex];
   const handlebackclick = () => {
@@ -238,6 +264,12 @@ function CourseDetails() {
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     Remind me tomorrow
+                  </button>
+                  <button 
+                    onClick={() => handleSetReminder(5 / 3600)}
+                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
+                  >
+                    ⚡ Test Reminder (in 5 sec)
                   </button>
                   {reminderAt && (
                     <button 
@@ -568,8 +600,14 @@ function CourseDetails() {
                   className="px-8 py-3 bg-[#0056D2] text-white font-semibold rounded-sm hover:bg-blue-700 transition-colors"
                   onClick={handlemoduleclick}
                 >
-                  Start Free Trial
+                  {isCompleted ? "Review Completed Course" : "Start Free Trial"}
                 </button>
+                {isCompleted && (
+                  <div className="flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full font-medium text-sm">
+                    <CheckCircle2 className="w-4 h-4 mr-1.5 text-green-600" />
+                    Course Completed
+                  </div>
+                )}
                 <div className="flex items-center space-x-4 flex-wrap gap-y-2">
                   <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <BookmarkPlus className="h-6 w-6 text-gray-600" />
@@ -644,6 +682,12 @@ function CourseDetails() {
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           >
                             Remind me tomorrow
+                          </button>
+                          <button 
+                            onClick={() => handleSetReminder(5 / 3600)}
+                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
+                          >
+                            ⚡ Test Reminder (in 5 sec)
                           </button>
                           {reminderAt && (
                             <button 
@@ -811,8 +855,16 @@ function CourseDetails() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start flex-1">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-[#0056D2] font-semibold">
-                          {index + 1}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
+                          completedModules.includes(index)
+                            ? "bg-green-500 text-white"
+                            : "bg-blue-50 text-[#0056D2]"
+                        }`}>
+                          {completedModules.includes(index) ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : (
+                            index + 1
+                          )}
                         </div>
                       </div>
                       <div className="ml-4">
@@ -967,6 +1019,17 @@ function CourseDetails() {
           </button>
         </div>
       </div>
+      {/* Confetti Celebration Modal */}
+      {showConfetti && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+          <Confetti recycle={false} numberOfPieces={600} gravity={0.15} />
+          <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md transform transition-all animate-bounce border-2 border-yellow-200">
+            <Award className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Great Job!</h2>
+            <p className="text-gray-600 text-lg">You've completed this course!</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Search, Laptop, FilterX, X } from 'lucide-react';
 export default function SearchPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Initialize query from URL on load
@@ -30,6 +31,15 @@ export default function SearchPage() {
     }
   }, [query, router.isReady]);
 
+  // Extract all unique categories (course types)
+  const allCategories = useMemo(() => {
+    const cats = new Set<string>();
+    courses.forEach(course => {
+      if (course.type) cats.add(course.type);
+    });
+    return Array.from(cats).sort();
+  }, []);
+
   // Extract all unique skills to use as tags
   const allTags = useMemo(() => {
     const skills = new Set<string>();
@@ -39,6 +49,12 @@ export default function SearchPage() {
     return Array.from(skills).sort();
   }, []);
 
+  const handleCategoryToggle = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
+    );
+  };
+
   const handleTagToggle = (tag: string) => {
     setSelectedTags(prev => 
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
@@ -46,7 +62,15 @@ export default function SearchPage() {
   };
 
   const clearSearch = () => setQuery("");
-  const clearFilters = () => setSelectedTags([]);
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedTags([]);
+  };
+
+  const clearAll = () => {
+    clearSearch();
+    clearFilters();
+  };
 
   const filteredCourses = useMemo(() => {
     return courses.filter(course => {
@@ -58,12 +82,17 @@ export default function SearchPage() {
         (course.modules && course.modules.some(m => m.description && m.description.toLowerCase().includes(searchLower))) ||
         (course.skills && course.skills.some(skill => skill.toLowerCase().includes(searchLower)));
         
+      const categoryMatch = selectedCategories.length === 0 || 
+        (course.type && selectedCategories.includes(course.type));
+
       const tagMatch = selectedTags.length === 0 || 
         selectedTags.every(tag => course.skills && course.skills.includes(tag));
         
-      return searchMatch && tagMatch;
+      return searchMatch && categoryMatch && tagMatch;
     });
-  }, [query, selectedTags]);
+  }, [query, selectedCategories, selectedTags]);
+
+  const hasActiveFilters = selectedCategories.length > 0 || selectedTags.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -77,13 +106,13 @@ export default function SearchPage() {
         <div className="flex flex-col md:flex-row gap-8">
           {/* Filters Sidebar */}
           <div className="w-full md:w-64 flex-shrink-0">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Filters</h2>
-                {selectedTags.length > 0 && (
+            <div className="bg-white p-6 rounded-lg shadow-sm space-y-6">
+              <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+                {hasActiveFilters && (
                   <button 
                     onClick={clearFilters}
-                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center font-medium"
                   >
                     <FilterX className="h-4 w-4 mr-1" />
                     Clear
@@ -91,20 +120,44 @@ export default function SearchPage() {
                 )}
               </div>
               
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                {allTags.map(tag => (
-                  <label key={tag} className="flex items-center space-x-3 cursor-pointer group">
-                    <input 
-                      type="checkbox"
-                      checked={selectedTags.includes(tag)}
-                      onChange={() => handleTagToggle(tag)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-gray-700 group-hover:text-blue-600 transition-colors">
-                      {tag}
-                    </span>
-                  </label>
-                ))}
+              {/* Category Filter */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Categories</h3>
+                <div className="space-y-2">
+                  {allCategories.map(cat => (
+                    <label key={cat} className="flex items-center space-x-3 cursor-pointer group">
+                      <input 
+                        type="checkbox"
+                        checked={selectedCategories.includes(cat)}
+                        onChange={() => handleCategoryToggle(cat)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
+                        {cat}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Skill Tags Filter */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Skill Tags</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                  {allTags.map(tag => (
+                    <label key={tag} className="flex items-center space-x-3 cursor-pointer group">
+                      <input 
+                        type="checkbox"
+                        checked={selectedTags.includes(tag)}
+                        onChange={() => handleTagToggle(tag)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
+                        {tag}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -186,6 +239,7 @@ export default function SearchPage() {
                   We couldn't find any courses matching your search criteria. Try adjusting your filters or search terms.
                 </p>
                 <button 
+                  id="clear-all-filters-btn"
                   onClick={() => {
                     clearSearch();
                     clearFilters();

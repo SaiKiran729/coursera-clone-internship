@@ -50,15 +50,21 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(async () => {
         // Fallback to cache if network fails
-        const cachedResponse = await caches.match(event.request);
+        const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
         if (cachedResponse) {
           return cachedResponse;
         }
         
         // If it's a navigation request and we are offline, try to return the cached root HTML or page HTML
         if (event.request.mode === 'navigate') {
-           const rootCache = await caches.match(event.request.url) || await caches.match('/');
-           if (rootCache) return rootCache;
+          try {
+            const path = new URL(event.request.url).pathname;
+            const pathCache = await caches.match(path) || await caches.match(event.request.url, { ignoreSearch: true });
+            if (pathCache) return pathCache;
+          } catch(e) {}
+
+          const rootCache = await caches.match('/');
+          if (rootCache) return rootCache;
         }
       })
   );

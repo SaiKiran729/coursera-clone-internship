@@ -37,15 +37,33 @@ export async function downloadCourseForOffline(course: Course): Promise<{ succes
     console.warn("Could not cache image for offline due to CORS or network issues", e);
   }
 
-  // Explicitly cache the HTML page for this course so it's available for offline navigation
+  // Explicitly cache HTML, scripts, stylesheets, and assets for this course
   try {
     if ('caches' in window) {
       const cache = await caches.open('coursera-clone-cache-v2');
+      // Cache course URL
       await cache.add(`/course/${course.id}`);
+      
+      // Cache all current scripts and stylesheets on the document
+      const assetUrls = Array.from(document.querySelectorAll<HTMLLinkElement | HTMLScriptElement>('link[rel="stylesheet"], script[src]'))
+        .map(el => ('src' in el ? (el as HTMLScriptElement).src : (el as HTMLLinkElement).href))
+        .filter(url => Boolean(url && (url.startsWith(window.location.origin) || url.startsWith('/'))));
+      
+      for (const assetUrl of assetUrls) {
+        try {
+          await cache.add(assetUrl);
+        } catch (err) {}
+      }
+
+      // Also try to cache the course image directly in CacheStorage
+      if (course.image) {
+        try {
+          await cache.add(course.image);
+        } catch (err) {}
+      }
     }
   } catch (e) {
-    console.error("Could not explicitly cache course HTML", e);
-    throw new Error("Failed to cache course HTML for offline viewing");
+    console.warn("Could not cache course HTML into CacheStorage", e);
   }
 
   const offlineData: OfflineCourse = {

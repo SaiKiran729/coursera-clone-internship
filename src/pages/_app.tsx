@@ -39,10 +39,14 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     };
 
-    checkReminders(); // check on load (catches ones that expired while closed)
-    const interval = setInterval(checkReminders, 60000); // check every minute while open
+    checkReminders(); // check on load
+    window.addEventListener('remindersUpdated', checkReminders);
+    const interval = setInterval(checkReminders, 5000); // check every 5 seconds for prompt delivery
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('remindersUpdated', checkReminders);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
