@@ -496,6 +496,7 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           opts={opts}
           onReady={onReady}
           onStateChange={onStateChange}
+          onError={(e) => console.warn('[Videolayer] YouTube Player error handled:', e)}
           className="w-full h-full absolute inset-0"
           iframeClassName="w-full h-full absolute inset-0 border-0"
           style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}

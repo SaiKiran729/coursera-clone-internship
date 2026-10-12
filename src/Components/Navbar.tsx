@@ -2,6 +2,7 @@ import { BookOpen, ChevronDown, Globe, Search, Flame, Menu, X } from "lucide-rea
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useState } from "react";
+import { getStreakData } from "@/utils/learningActivity";
 
 const Navbar = () => {
   const router = useRouter();
@@ -11,9 +12,11 @@ const Navbar = () => {
 
   React.useEffect(() => {
     const updateStreak = () => {
-      import('@/utils/learningActivity').then(({ getStreakData }) => {
+      try {
         setStreak(getStreakData().currentStreak);
-      });
+      } catch (e) {
+        console.warn("Could not read streak data in Navbar", e);
+      }
     };
     updateStreak();
     window.addEventListener('streakUpdated', updateStreak);

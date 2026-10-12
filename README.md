@@ -352,7 +352,7 @@ The application is completely self-contained with no external database requireme
 2. **`IndexedDB` (Database: `keyval-store`):**
    - Key: `offline_course_<courseId>`
    - Stores serialized course metadata, syllabus text, and Base64 cover image for offline access.
-3. **`CacheStorage` (Cache: `coursera-clone-cache-v2`):**
+3. **`CacheStorage` (Cache: `coursera-clone-cache-v3`):**
    - Network-First strategy caching HTML, static Next.js JavaScript chunks, and stylesheets with offline fallbacks.
 
 ---

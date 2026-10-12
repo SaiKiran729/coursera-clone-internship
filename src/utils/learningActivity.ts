@@ -9,9 +9,15 @@ export interface StreakData {
 
 const STREAK_KEY = 'learning_streak';
 
-function parseLocalDate(dateString: string): Date {
-  const [y, m, d] = dateString.split('-').map(Number);
-  return new Date(y, m - 1, d); // Midnight local time
+function parseLocalDate(dateString: string | null | undefined): Date {
+  if (!dateString || typeof dateString !== 'string') {
+    return new Date();
+  }
+  const parts = dateString.split('-').map(Number);
+  if (parts.length < 3 || parts.some(isNaN)) {
+    return new Date();
+  }
+  return new Date(parts[0], parts[1] - 1, parts[2]); // Midnight local time
 }
 
 function getYesterdayDateKey(): string {
@@ -34,7 +40,10 @@ export function getStreakData(): StreakData {
   try {
     const data = localStorage.getItem(STREAK_KEY);
     if (data) {
-      const parsed: StreakData = JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!parsed || typeof parsed !== 'object') {
+        return { currentStreak: 0, longestStreak: 0, lastActivityDate: null, badges: [] };
+      }
       if (!Array.isArray(parsed.badges)) {
         parsed.badges = [];
       }

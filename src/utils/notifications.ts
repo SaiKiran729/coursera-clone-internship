@@ -13,7 +13,12 @@ export function getReminders(): RemindersMap {
   if (typeof window === 'undefined') return {};
   try {
     const data = localStorage.getItem(REMINDERS_KEY);
-    return data ? JSON.parse(data) : {};
+    if (!data) return {};
+    const parsed = JSON.parse(data);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return {};
   } catch (e) {
     console.error("[Reminders] Corrupt reminders data:", e);
     return {};

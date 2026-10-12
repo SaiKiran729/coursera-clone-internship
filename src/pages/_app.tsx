@@ -2,10 +2,54 @@ import Fotter from "@/Components/Fotter";
 import Navbar from "@/Components/Navbar";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, Component as ReactComponent, ErrorInfo } from "react";
 import { getReminders, cancelReminder, deliverCourseNotification } from "@/utils/notifications";
 import { BellRing, X, ArrowRight } from "lucide-react";
 import Link from "next/link";
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends ReactComponent<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[App ErrorBoundary] Caught client exception:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 text-sm max-w-md mb-4">
+            A temporary client exception occurred. Please reload to refresh the page.
+          </p>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') window.location.reload();
+            }}
+            className="px-5 py-2.5 bg-[#0056D2] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm min-h-[44px]"
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App({ Component, pageProps }: AppProps) {
   // In-app visual reminder toast state
@@ -25,6 +69,7 @@ export default function App({ Component, pageProps }: AppProps) {
         navigator.serviceWorker.register('/sw.js').then(
           (registration) => {
             console.log('[SW] Service Worker registered successfully with scope:', registration.scope);
+            registration.update().catch(() => {});
           },
           (err) => {
             console.warn('[SW] Service Worker registration failed:', err);
@@ -164,7 +209,9 @@ export default function App({ Component, pageProps }: AppProps) {
         </div>
       )}
 
-      <Component {...pageProps} />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
       <Fotter />
     </div>
   );

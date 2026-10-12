@@ -1,4 +1,4 @@
-const CACHE_NAME = 'coursera-clone-cache-v2';
+const CACHE_NAME = 'coursera-clone-cache-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -16,6 +16,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Deleting stale cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -30,55 +31,75 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Ignore API calls, external resources, and videos
+  // CRITICAL: NEVER intercept or synthesize 503 text for Next.js internal assets, chunks, APIs, or video streams.
+  // Next.js handles immutable chunk caching natively. Intercepting _next/ causes ChunkLoadError and SyntaxError when deployments update.
   if (
+    event.request.url.includes('/_next/') ||
     event.request.url.includes('youtube.com') ||
     event.request.url.includes('youtu.be') ||
-    event.request.url.includes('/api/') || // Ignore Next.js API routes if any
+    event.request.url.includes('/api/') ||
     event.request.method !== 'GET'
   ) {
-    return; // Let the browser handle it
+    return; // Pass through directly to browser network
   }
 
-  // Use Network First strategy
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        // Cache the valid basic response
-        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache).catch(() => {});
-          }).catch(() => {});
-        }
-        return networkResponse;
-      })
-      .catch(async () => {
-        // Fallback to cache if network fails
-        const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // If it's a navigation request and we are offline, try to return the cached root HTML or page HTML
-        if (event.request.mode === 'navigate') {
+  // Handle navigation requests (e.g. user opening or refreshing a page)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache).catch(() => {});
+            }).catch(() => {});
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Offline fallback
+          const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+
           try {
             const path = new URL(event.request.url).pathname;
-            const pathCache = await caches.match(path) || await caches.match(event.request.url, { ignoreSearch: true });
+            const pathCache = await caches.match(path);
             if (pathCache) return pathCache;
+
+            // Only return root cache if navigating to root '/'
+            if (path === '/') {
+              const rootCache = await caches.match('/');
+              if (rootCache) return rootCache;
+            }
           } catch(e) {}
 
-          const rootCache = await caches.match('/');
-          if (rootCache) return rootCache;
-        }
+          return new Response('Network unavailable and page not cached for offline access.', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({ 'Content-Type': 'text/plain' })
+          });
+        })
+    );
+    return;
+  }
 
-        // Return a clean fallback Response to prevent Chrome Uncaught TypeError in respondWith
-        return new Response('Network unavailable and resource not cached.', {
-          status: 503,
-          statusText: 'Service Unavailable',
-          headers: new Headers({ 'Content-Type': 'text/plain' })
-        });
-      })
+  // For static assets (images, fonts, offline downloads)
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((res) => {
+        if (res && res.status === 200 && (res.type === 'basic' || res.type === 'cors')) {
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.match(event.request).then((has) => {
+              if (has) cache.put(event.request, res.clone()).catch(() => {});
+            });
+          }).catch(() => {});
+        }
+        return res;
+      });
+    })
   );
 });
 

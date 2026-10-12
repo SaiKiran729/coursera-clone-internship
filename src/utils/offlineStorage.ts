@@ -40,7 +40,7 @@ export async function downloadCourseForOffline(course: Course): Promise<{ succes
   // Explicitly cache HTML, scripts, stylesheets, and assets for this course
   try {
     if ('caches' in window) {
-      const cache = await caches.open('coursera-clone-cache-v2');
+      const cache = await caches.open('coursera-clone-cache-v3');
       // Cache course URL
       await cache.add(`/course/${course.id}`);
       
