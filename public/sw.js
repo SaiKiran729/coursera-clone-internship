@@ -1,10 +1,10 @@
-const CACHE_NAME = 'coursera-clone-cache-v3';
+const CACHE_NAME = 'coursera-clone-cache-v4';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Pre-cache the root page for offline fallback
-      return cache.addAll(['/']);
+      // Pre-cache root page and favicon for safe fallback
+      return cache.addAll(['/', '/favicon.ico']);
     })
   );
   self.skipWaiting();
@@ -16,7 +16,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[SW] Deleting stale cache:', cacheName);
+            console.log('[SW] Purging outdated cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -31,19 +31,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CRITICAL: NEVER intercept or synthesize 503 text for Next.js internal assets, chunks, APIs, or video streams.
-  // Next.js handles immutable chunk caching natively. Intercepting _next/ causes ChunkLoadError and SyntaxError when deployments update.
+  // Bypass external video streams, non-GET, and APIs
   if (
-    event.request.url.includes('/_next/') ||
     event.request.url.includes('youtube.com') ||
     event.request.url.includes('youtu.be') ||
     event.request.url.includes('/api/') ||
     event.request.method !== 'GET'
   ) {
-    return; // Pass through directly to browser network
+    return;
   }
 
-  // Handle navigation requests (e.g. user opening or refreshing a page)
+  // 1. Handle Navigation Requests (e.g. opening or refreshing a course page)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -57,47 +55,71 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(async () => {
-          // Offline fallback
+          // Offline fallback for navigation
           const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
           if (cachedResponse) {
             return cachedResponse;
           }
 
           try {
-            const path = new URL(event.request.url).pathname;
+            const url = new URL(event.request.url);
+            const path = url.pathname;
             const pathCache = await caches.match(path);
             if (pathCache) return pathCache;
 
-            // Only return root cache if navigating to root '/'
+            // If navigating to root, return root
             if (path === '/') {
               const rootCache = await caches.match('/');
               if (rootCache) return rootCache;
             }
           } catch(e) {}
 
-          return new Response('Network unavailable and page not cached for offline access.', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({ 'Content-Type': 'text/plain' })
-          });
+          return new Response(
+            `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Offline — Coursera Clone</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,-apple-system,sans-serif;padding:2rem;text-align:center;color:#1f2937}h1{color:#0056D2}p{margin:1rem 0}a{display:inline-block;padding:0.75rem 1.5rem;background:#0056D2;color:#fff;text-decoration:none;border-radius:0.5rem}</style></head><body><h1>Offline Mode Active</h1><p>This page has not been downloaded for offline access. Please reconnect to view new courses.</p><a href="/">Return to Home</a></body></html>`,
+            {
+              status: 200,
+              headers: { 'Content-Type': 'text/html' }
+            }
+          );
         })
     );
     return;
   }
 
-  // For static assets (images, fonts, offline downloads)
+  // 2. Handle Next.js Versioned Static Assets (JavaScript chunks, CSS stylesheets, fonts)
+  // Strategy: Network-First with Cache Fallback (guarantees fresh code online, working assets offline)
+  if (event.request.url.includes('/_next/static/') || event.request.url.includes('/_next/data/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return new Response('', { status: 404, statusText: 'Not in Offline Cache' });
+        })
+    );
+    return;
+  }
+
+  // 3. Handle Other Static Assets (Images, fonts, icons)
+  // Strategy: Cache-First with Network Fallback
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request).then((res) => {
-        if (res && res.status === 200 && (res.type === 'basic' || res.type === 'cors')) {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.match(event.request).then((has) => {
-              if (has) cache.put(event.request, res.clone()).catch(() => {});
-            });
-          }).catch(() => {});
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
         }
-        return res;
+        return networkResponse;
+      }).catch(() => {
+        return new Response('', { status: 408, statusText: 'Offline Asset Unavailable' });
       });
     })
   );

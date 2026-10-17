@@ -37,8 +37,16 @@ import Videolayer from "@/Components/Videolayer";
 import Confetti from "react-confetti";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
 import { useRef } from "react";
-import { downloadCourseForOffline, checkIsOffline, removeOfflineCourse, getOfflineCourse } from '@/utils/offlineStorage';
-import { getReminders, setReminder, cancelReminder as cancelNotification, requestNotificationPermission } from '@/utils/notifications';
+import { downloadCourseForOffline, checkIsOffline, removeOfflineCourse, getOfflineCourse, generateOfflineCourseSvg } from '@/utils/offlineStorage';
+import {
+  getReminders,
+  setReminder,
+  cancelReminder as cancelNotification,
+  requestNotificationPermission,
+  getNotificationPermissionStatus,
+  subscribeToPushNotification,
+  deliverCourseNotification
+} from '@/utils/notifications';
 
 function CourseDetails() {
   const [selectedModule, setSelectedModule] = useState(0);
@@ -50,6 +58,7 @@ function CourseDetails() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [reminderAt, setReminderAt] = useState<number | null>(null);
   const [showReminderMenu, setShowReminderMenu] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('default');
   const [showConfetti, setShowConfetti] = useState(false);
   const [resumableModule, setResumableModule] = useState<{ index: number; timestamp: number } | null>(null);
 
@@ -169,17 +178,25 @@ function CourseDetails() {
     }
   };
 
+  // 2b. Synchronize notification permission status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setPermissionStatus(getNotificationPermissionStatus());
+    }
+  }, []);
+
   const handleSetReminder = async (hours: number) => {
     if (!course) return;
 
     const permission = await requestNotificationPermission();
+    setPermissionStatus(permission);
     if (permission === 'unsupported') {
       alert("Notifications are not supported in this browser. Please use Chrome, Edge, or Firefox.");
       setShowReminderMenu(false);
       return;
     }
     if (permission === 'denied') {
-      alert("Browser notifications are blocked. Please allow notifications in site settings to use reminders.");
+      alert("Browser notifications are blocked in your site settings. Please click the site settings or lock icon in your browser address bar and set Notifications to 'Allow'.");
       setShowReminderMenu(false);
       return;
     }
@@ -191,6 +208,24 @@ function CourseDetails() {
 
     const timestamp = Date.now() + Math.round(hours * 60 * 60 * 1000);
     setReminder(course.id, timestamp, course.title);
+    // Task 5: Register with server Web Push endpoint for reliable notification record
+    subscribeToPushNotification(course.id, timestamp, course.title).catch(() => {});
+    setShowReminderMenu(false);
+  };
+
+  const handleTestInstantNotification = async () => {
+    if (!course) return;
+    const permission = await requestNotificationPermission();
+    setPermissionStatus(permission);
+    if (permission === 'denied') {
+      alert("Notifications are blocked in your browser. Please enable them in site settings to test.");
+      return;
+    }
+    if (permission !== 'granted') {
+      alert("Please allow browser notifications to test instant delivery.");
+      return;
+    }
+    await deliverCourseNotification(course.id, course.title);
     setShowReminderMenu(false);
   };
 
@@ -300,43 +335,92 @@ function CourseDetails() {
               </button>
 
               {showReminderMenu && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3 text-left">
+                  <div className="mb-2 pb-2 border-b border-gray-100 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                      Notifications
+                    </span>
+                    {permissionStatus === 'granted' ? (
+                      <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
+                        Allowed
+                      </span>
+                    ) : permissionStatus === 'denied' ? (
+                      <span className="text-[10px] font-semibold bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                        Blocked
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                        Prompt Required
+                      </span>
+                    )}
+                  </div>
+
+                  {permissionStatus === 'denied' && (
+                    <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700 leading-tight">
+                      ⚠️ Notifications blocked in browser. Enable notifications in your browser address bar to receive alerts.
+                    </div>
+                  )}
+
                   {reminderAt && (
-                    <div className="px-4 py-2 border-b border-gray-100 text-xs text-gray-500">
-                      Currently set for:<br/>
-                      <span className="font-semibold text-gray-700">
+                    <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+                      <div className="text-[10px] font-semibold text-blue-700 uppercase">Scheduled For:</div>
+                      <div className="font-bold text-blue-950">
                         {new Date(reminderAt).toLocaleString(undefined, {
                           weekday: 'short',
                           hour: 'numeric',
                           minute: '2-digit'
                         })}
-                      </span>
+                      </div>
                     </div>
                   )}
-                  <button
-                    onClick={() => handleSetReminder(1)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Remind me in 1 hour
-                  </button>
-                  <button
-                    onClick={() => handleSetReminder(24)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Remind me tomorrow
-                  </button>
-                  <button
-                    onClick={() => handleSetReminder(5 / 3600)}
-                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
-                  >
-                    ⚡ Test Reminder (in 5 sec)
-                  </button>
+
+                  <div className="mb-3 text-[10px] text-gray-500 bg-gray-50 p-2 rounded leading-tight">
+                    ℹ️ <strong>Delivery:</strong> Service Worker <code>showNotification()</code> fires when tab is open. Server Web Push record saved at <code>/api/reminders/subscribe</code>.
+                  </div>
+
+                  <div className="space-y-1">
+                    <button
+                      id="btn-schedule-1hr"
+                      onClick={() => handleSetReminder(1)}
+                      className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded font-medium flex items-center justify-between"
+                    >
+                      <span>Remind me in 1 hour</span>
+                      <span className="text-[10px] text-gray-400">+1h</span>
+                    </button>
+                    <button
+                      id="btn-schedule-24hr"
+                      onClick={() => handleSetReminder(24)}
+                      className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded font-medium flex items-center justify-between"
+                    >
+                      <span>Remind me tomorrow</span>
+                      <span className="text-[10px] text-gray-400">+24h</span>
+                    </button>
+                    <button
+                      id="btn-schedule-test"
+                      onClick={() => handleSetReminder(5 / 3600)}
+                      className="w-full text-left px-2.5 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded font-medium flex items-center justify-between"
+                    >
+                      <span>Schedule Test (in 5 sec)</span>
+                      <span className="text-[10px] text-blue-500">5s timer</span>
+                    </button>
+                    <button
+                      id="btn-instant-notification-test"
+                      onClick={handleTestInstantNotification}
+                      className="w-full text-left px-2.5 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded font-semibold flex items-center justify-between"
+                    >
+                      <span>⚡ Test Notification (Fire Now)</span>
+                      <span className="text-[10px] text-indigo-500">Instant</span>
+                    </button>
+                  </div>
+
                   {reminderAt && (
                     <button
+                      id="btn-cancel-reminder"
                       onClick={handleCancelReminder}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                      className="w-full mt-2 text-center px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded font-medium border-t border-gray-100"
                     >
-                      Cancel Reminder
+                      Cancel Active Reminder
                     </button>
                   )}
                 </div>
@@ -771,43 +855,92 @@ function CourseDetails() {
                       </button>
 
                       {showReminderMenu && (
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
+                        <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3 text-left">
+                          <div className="mb-2 pb-2 border-b border-gray-100 flex items-center justify-between">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                              Notifications
+                            </span>
+                            {permissionStatus === 'granted' ? (
+                              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
+                                Allowed
+                              </span>
+                            ) : permissionStatus === 'denied' ? (
+                              <span className="text-[10px] font-semibold bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                                Blocked
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                                Prompt Required
+                              </span>
+                            )}
+                          </div>
+
+                          {permissionStatus === 'denied' && (
+                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700 leading-tight">
+                              ⚠️ Notifications blocked in browser. Enable notifications in your browser address bar to receive alerts.
+                            </div>
+                          )}
+
                           {reminderAt && (
-                            <div className="px-4 py-2 border-b border-gray-100 text-xs text-gray-500">
-                              Currently set for:<br/>
-                              <span className="font-semibold text-gray-700">
+                            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900">
+                              <div className="text-[10px] font-semibold text-blue-700 uppercase">Scheduled For:</div>
+                              <div className="font-bold text-blue-950">
                                 {new Date(reminderAt).toLocaleString(undefined, {
                                   weekday: 'short',
                                   hour: 'numeric',
                                   minute: '2-digit'
                                 })}
-                              </span>
+                              </div>
                             </div>
                           )}
-                          <button
-                            onClick={() => handleSetReminder(1)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            Remind me in 1 hour
-                          </button>
-                          <button
-                            onClick={() => handleSetReminder(24)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            Remind me tomorrow
-                          </button>
-                          <button
-                            onClick={() => handleSetReminder(5 / 3600)}
-                            className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-t border-gray-100"
-                          >
-                            ⚡ Test Reminder (in 5 sec)
-                          </button>
+
+                          <div className="mb-3 text-[10px] text-gray-500 bg-gray-50 p-2 rounded leading-tight">
+                            ℹ️ <strong>Delivery:</strong> Service Worker <code>showNotification()</code> fires when tab is open. Server Web Push record saved at <code>/api/reminders/subscribe</code>.
+                          </div>
+
+                          <div className="space-y-1">
+                            <button
+                              id="btn-overview-schedule-1hr"
+                              onClick={() => handleSetReminder(1)}
+                              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded font-medium flex items-center justify-between"
+                            >
+                              <span>Remind me in 1 hour</span>
+                              <span className="text-[10px] text-gray-400">+1h</span>
+                            </button>
+                            <button
+                              id="btn-overview-schedule-24hr"
+                              onClick={() => handleSetReminder(24)}
+                              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded font-medium flex items-center justify-between"
+                            >
+                              <span>Remind me tomorrow</span>
+                              <span className="text-[10px] text-gray-400">+24h</span>
+                            </button>
+                            <button
+                              id="btn-overview-schedule-test"
+                              onClick={() => handleSetReminder(5 / 3600)}
+                              className="w-full text-left px-2.5 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded font-medium flex items-center justify-between"
+                            >
+                              <span>Schedule Test (in 5 sec)</span>
+                              <span className="text-[10px] text-blue-500">5s timer</span>
+                            </button>
+                            <button
+                              id="btn-overview-instant-notification-test"
+                              onClick={handleTestInstantNotification}
+                              className="w-full text-left px-2.5 py-1.5 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded font-semibold flex items-center justify-between"
+                            >
+                              <span>⚡ Test Notification (Fire Now)</span>
+                              <span className="text-[10px] text-indigo-500">Instant</span>
+                            </button>
+                          </div>
+
                           {reminderAt && (
                             <button
+                              id="btn-overview-cancel-reminder"
                               onClick={handleCancelReminder}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                              className="w-full mt-2 text-center px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded font-medium border-t border-gray-100"
                             >
-                              Cancel Reminder
+                              Cancel Active Reminder
                             </button>
                           )}
                         </div>
@@ -836,6 +969,9 @@ function CourseDetails() {
                   <img
                     src={course.image}
                     alt="Course Preview"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = generateOfflineCourseSvg(course.title, course.provider);
+                    }}
                     className="w-full h-[225px] object-cover"
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">

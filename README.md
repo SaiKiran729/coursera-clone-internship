@@ -145,45 +145,38 @@ Every task is modularized with specific files responsible for its state, UI, and
 
 ### Task 3 — Offline Course Access
 - **Live Path:** Any course overview (e.g. [`/course/ibm-data-science`](https://coursera-internship.vercel.app/course/ibm-data-science))
-- **IndexedDB Storage:** Clicking **"Download for Offline"** serializes course metadata, syllabus descriptions, and converts the cover image to a Base64 data URL stored in IndexedDB (`keyval-store`).
-- **Service Worker Shell:** `public/sw.js` caches HTML documents, Next.js chunks, and CSS files using a Network-First strategy with offline fallbacks.
-- **Airplane Mode Verification:** When offline, opening or refreshing the exact course URL loads the complete syllabus, title, and images without an `ERR_INTERNET_DISCONNECTED` crash.
-- **Video Exclusion:** In compliance with task requirements, heavy video streams are excluded; when offline, the player displays a clean *"Offline Mode Active — Video streaming requires an internet connection"* badge.
+- **Cache-v4 Network-First Strategy:** The Service Worker (`public/sw.js`, cache `coursera-clone-cache-v4`) handles Next.js versioned bundles (`/_next/static/` and `/_next/data/`) using **Network-First with Cache Fallback**. This guarantees that all required JavaScript chunks and CSS stylesheets are cached and available when offline.
+- **Guaranteed Local SVG Image Fallback:** External image hosts (Unsplash) may fail or be blocked when offline. `generateOfflineCourseSvg()` creates inlined SVG vector images to ensure that course preview images never fail offline.
+- **IndexedDB Storage:** Clicking **"Download for Offline"** serializes course metadata, syllabus descriptions, and vector fallbacks into IndexedDB (`keyval-store`).
+- **Airplane Mode Verification:** When offline, opening or refreshing the course URL loads the complete syllabus, title, and images smoothly without `ERR_INTERNET_DISCONNECTED` errors.
 
 ---
 
 ### Task 4 — Daily Learning Streak and Badges
 - **Live Path:** [`/profile`](https://coursera-internship.vercel.app/profile)
-- **Timezone-Safe Tracking:** Uses `getLocalDateKey()` (`YYYY-MM-DD`) based on the user's local clock to ensure streak calculations are always timezone-accurate.
-- **Non-Duplication Rule:** Completing multiple lessons or activities on the same day never increments the streak counter twice.
-- **Missed-Day Reset:** If more than 1 day passes between activities, the active streak resets to 0.
+- **Independent Daily Login Tracking:** Logins are tracked independently via `recordDailyLogin()` in `src/Components/Navbar.tsx` upon signing in. Persistent session tracking (`coursera_user_session`) ensures page refreshes do not count as repeated logins.
+- **Unified Daily Increment Engine:** Adheres to a strict 1-increment-per-calendar-day policy across both logins and lesson activities.
+- **Isolated Evaluator Simulation Sandbox:** Simulation testing tools operate on an isolated state (`learning_streak_simulation`) accessed via the **Evaluator Simulator Sandbox** tab on `/profile`. Evaluators can test 7-day milestones, badges, and missed days without altering or corrupting authentic user progress in `learning_streak`.
 - **Milestone Badges:** Unlocks **3-Day**, **7-Day Streak** *(primary task requirement)*, **14-Day**, and **30-Day** badges.
-- **Live Navbar Badge:** The Navbar displays an active flame counter (`🔥 [X] Day Streak`) that updates immediately on activity.
-- **Interactive Evaluator Tools:** The Profile page contains an evaluator control panel to simulate a 7-day streak, simulate a missed day, or test consecutive day advances without waiting real days.
+- **Live Navbar Badge:** Live clickable flame counter (`🔥 [X] Day Streak`) updating in real-time.
 
 ---
 
 ### Task 5 — Course Reminders & Browser Notifications
 - **Live Path:** Any course page (e.g. [`/course/google-data-analytics`](https://coursera-internship.vercel.app/course/google-data-analytics))
-- **Dual Placement:** Reminder menu is accessible from both the **Course Overview hero banner** and the **Sticky Module Page header**.
-- **Android Chrome Service Worker Delivery:** Android Chrome blocks the direct `new Notification()` constructor with a `TypeError: Illegal constructor`. Our engine uses `ServiceWorkerRegistration.showNotification()` via `navigator.serviceWorker.ready` to deliver notifications to Android notification drawers.
-- **Desktop Fallback:** Automatically falls back to desktop `new Notification()` when running outside a Service Worker context.
-- **Foreground Toast Banner:** Simultaneously dispatches a custom event that renders a floating in-app toast (`#course-reminder-toast`) with course details and a direct "Continue Learning" link.
-- **Precise Timer Scheduling:** Computes the exact millisecond delta for pending reminders and arms an accurate `setTimeout`.
-- **Instant Test Option:** Includes a **"⚡ Test Reminder (in 5 sec)"** option specifically designed for evaluators to verify notification delivery in 5 seconds.
-- **Cancellation & Completion Cleanup:** Reminders can be cancelled at any time, and completing a course automatically clears its scheduled reminders.
+- **Server Web Push Endpoints:** Built `/api/reminders/subscribe.ts` and `/api/reminders/trigger.ts` for server-side push subscription registration and trigger simulation.
+- **Truthful Delivery Communication:** The reminder dropdown transparently informs the user of active delivery mechanisms (Service Worker `showNotification()` for open-tab/foreground, server endpoint for background push).
+- **Graceful Permission Handling:** Clear in-app warnings for `denied`, `default`, and `granted` notification states.
+- **Instant Test Option:** Includes a **"⚡ Test Notification (Fire Now)"** button (`#btn-instant-notification-test`) for 1-click evaluation verification, plus 5-second, 1-hour, and tomorrow scheduling options.
 
 ---
 
 ### Task 6 — Video Progress and Resume
 - **Live Path:** Any course module with video (e.g. [`/course/microsoft-front-end`](https://coursera-internship.vercel.app/course/microsoft-front-end))
-- **Auto-Pause on Navigation (Zero Audio Leak):** Automatically pauses video playback and flushes timestamps when navigating away (`router.events.on('routeChangeStart')`) or switching tabs (`visibilitychange`).
-- **100% Solid 16:9 Theater Overlay:** Solid dark backdrop (`#090d16`, `zIndex: 50`) prevents YouTube title, channel branding, and white play buttons from bleeding through.
-- **Action Choices:**
-  - **"Resume from MM:SS"** (Coursera Blue button) — seeks to saved timestamp and plays.
-  - **"Start from Beginning"** (Dark Slate button) — seeks to 0:00, resets saved progress, and plays.
-- **Multi-Redirect Persistence ($N$ Times):** Whenever an evaluator leaves the page and returns $N$ times, the resume prompt is guaranteed to reappear $N$ times.
-- **Independent Module Progress:** Storage keys are partitioned by `video_progress_${courseId}_${moduleIndex}`, ensuring modules track progress independently.
+- **Automatic Seek & Auto-Resume (No Blocking Modal):** Automatically seeks (`player.seekTo(savedTime, true)`) and calls `player.playVideo()` in `onReady` when a saved timestamp >= 2s exists.
+- **Non-Blocking Floating Notification Banner:** Displays a floating notification (`#video-autoresume-notification`) indicating playback resumed from the saved timestamp, with an optional **"Start Over"** button (`#btn-start-beginning`) to restart from 0:00. Auto-dismisses after 6 seconds.
+- **Autoplay Restriction Fallback:** If browser policy blocks autoplay without prior user interaction, provides a one-click *"Resume / Play"* button (`#btn-resume-watching`).
+- **Auto-Pause on Navigation:** Automatically pauses video playback and flushes timestamps when navigating away or switching tabs.
 
 ---
 

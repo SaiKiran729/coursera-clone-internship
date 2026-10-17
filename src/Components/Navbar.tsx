@@ -1,8 +1,8 @@
 import { BookOpen, ChevronDown, Globe, Search, Flame, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
-import { getStreakData } from "@/utils/learningActivity";
+import React, { useState, useEffect } from "react";
+import { getStreakData, recordDailyLogin } from "@/utils/learningActivity";
 
 const Navbar = () => {
   const router = useRouter();
@@ -10,7 +10,7 @@ const Navbar = () => {
   const [streak, setStreak] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const updateStreak = () => {
       try {
         setStreak(getStreakData().currentStreak);
@@ -23,8 +23,22 @@ const Navbar = () => {
     return () => window.removeEventListener('streakUpdated', updateStreak);
   }, []);
 
+  // Restore authenticated session on mount without counting page refresh as a new login
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('coursera_user_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name) {
+          setuser(parsed);
+          setisloggedin(true);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   // Close mobile menu on route change
-  React.useEffect(() => {
+  useEffect(() => {
     const handleRouteChange = () => setIsMobileMenuOpen(false);
     router.events.on('routeChangeStart', handleRouteChange);
     return () => router.events.off('routeChangeStart', handleRouteChange);
@@ -114,17 +128,27 @@ const Navbar = () => {
   ];
 
   const handlegooglesignin = () => {
-    setisloggedin(true);
-    setuser({
+    const userData = {
       name: "John Doe",
-      email: "Johnn.doe@example.com",
+      email: "john.doe@example.com",
       image:
         "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=48&h=48&q=80",
-    });
+    };
+    setisloggedin(true);
+    setuser(userData);
+    try {
+      localStorage.setItem('coursera_user_session', JSON.stringify(userData));
+    } catch (e) {}
+    // Record genuine daily login event
+    recordDailyLogin();
   };
+
   const handlelogout = () => {
     setisloggedin(false);
     setuser(null);
+    try {
+      localStorage.removeItem('coursera_user_session');
+    } catch (e) {}
   };
   return (
     <>

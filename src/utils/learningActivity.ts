@@ -4,10 +4,13 @@ export interface StreakData {
   currentStreak: number;
   longestStreak: number;
   lastActivityDate: string | null;
+  lastActivityType?: 'login' | 'learning' | null;
+  lastLoginDate?: string | null;
   badges: string[];
 }
 
 const STREAK_KEY = 'learning_streak';
+const SIMULATION_KEY = 'learning_streak_simulation';
 
 function parseLocalDate(dateString: string | null | undefined): Date {
   if (!dateString || typeof dateString !== 'string') {
@@ -32,6 +35,9 @@ function getTwoDaysAgoDateKey(): string {
   return getLocalDateKey(twoDaysAgo);
 }
 
+/**
+ * Get the genuine production streak data recorded from user activity.
+ */
 export function getStreakData(): StreakData {
   if (typeof window === 'undefined') {
     return { currentStreak: 0, longestStreak: 0, lastActivityDate: null, badges: [] };
@@ -82,7 +88,12 @@ export function getStreakData(): StreakData {
   };
 }
 
-export function recordLearningActivity(): StreakData {
+/**
+ * Unified daily streak engine:
+ * Integrates daily logins and meaningful learning activity (module / video completion).
+ * Prevents duplicate increments on the same local calendar day.
+ */
+export function recordStreakActivity(activityType: 'login' | 'learning'): StreakData {
   if (typeof window === 'undefined') {
     return getStreakData();
   }
@@ -90,8 +101,15 @@ export function recordLearningActivity(): StreakData {
   const data = getStreakData();
   const today = getLocalDateKey();
 
-  // If activity was already recorded today, do not increase streak twice on the same day
+  // If activity was already recorded today, do not increment streak twice on the same day
   if (data.lastActivityDate === today) {
+    // Still record login timestamp if this was a login action
+    if (activityType === 'login' && data.lastLoginDate !== today) {
+      data.lastLoginDate = today;
+      try {
+        localStorage.setItem(STREAK_KEY, JSON.stringify(data));
+      } catch (e) {}
+    }
     return data;
   }
 
@@ -101,15 +119,15 @@ export function recordLearningActivity(): StreakData {
     const todayDate = parseLocalDate(today);
     const lastActivity = parseLocalDate(data.lastActivityDate);
     
-    // Calculate full day difference in local time
+    // Calculate full day difference in user's local timezone
     const diffTime = Math.abs(todayDate.getTime() - lastActivity.getTime());
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
     
     if (diffDays === 1) {
-      // Consecutive day!
+      // Consecutive calendar day!
       newCurrentStreak = (data.currentStreak || 0) + 1;
     } else {
-      // Day was missed; streak resets to 1 on this new activity
+      // Day was missed (> 1 day gap); streak resets to 1 on this new activity
       newCurrentStreak = 1;
     }
   }
@@ -134,6 +152,8 @@ export function recordLearningActivity(): StreakData {
     currentStreak: newCurrentStreak,
     longestStreak: newLongestStreak,
     lastActivityDate: today,
+    lastActivityType: activityType,
+    lastLoginDate: activityType === 'login' ? today : data.lastLoginDate,
     badges: newBadges,
   };
 
@@ -149,9 +169,51 @@ export function recordLearningActivity(): StreakData {
   return updatedData;
 }
 
-// ==========================================
-// TEST DATA & SIMULATION HELPERS FOR TASK 4
-// ==========================================
+/**
+ * Record a genuine daily login session event when the user signs in.
+ */
+export function recordDailyLogin(): StreakData {
+  return recordStreakActivity('login');
+}
+
+/**
+ * Record meaningful learning activity when user completes a module or video milestone.
+ */
+export function recordLearningActivity(): StreakData {
+  return recordStreakActivity('learning');
+}
+
+// =========================================================================
+// ISOLATED EVALUATION SIMULATION SANDBOX (DOES NOT MUTATE REAL USER DATA)
+// =========================================================================
+
+export function getSimulatedStreakData(): StreakData {
+  if (typeof window === 'undefined') {
+    return { currentStreak: 0, longestStreak: 0, lastActivityDate: null, badges: [] };
+  }
+
+  try {
+    const data = localStorage.getItem(SIMULATION_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          currentStreak: Number(parsed.currentStreak) || 0,
+          longestStreak: Number(parsed.longestStreak) || 0,
+          lastActivityDate: parsed.lastActivityDate || null,
+          badges: Array.isArray(parsed.badges) ? parsed.badges : []
+        };
+      }
+    }
+  } catch (e) {}
+
+  return {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null,
+    badges: [],
+  };
+}
 
 export function simulateStreak(days: number): StreakData {
   const today = getLocalDateKey();
@@ -165,21 +227,22 @@ export function simulateStreak(days: number): StreakData {
     currentStreak: days,
     longestStreak: Math.max(days, 7),
     lastActivityDate: today,
+    lastActivityType: 'learning',
     badges,
   };
 
   try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data));
+    localStorage.setItem(SIMULATION_KEY, JSON.stringify(data));
   } catch (e) {}
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('streakUpdated'));
+    window.dispatchEvent(new Event('simulationUpdated'));
   }
   return data;
 }
 
 export function simulateMissedDay(): StreakData {
-  const current = getStreakData();
+  const current = getSimulatedStreakData();
   const twoDaysAgo = getTwoDaysAgoDateKey();
 
   const data: StreakData = {
@@ -189,18 +252,18 @@ export function simulateMissedDay(): StreakData {
   };
 
   try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data));
+    localStorage.setItem(SIMULATION_KEY, JSON.stringify(data));
   } catch (e) {}
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('streakUpdated'));
+    window.dispatchEvent(new Event('simulationUpdated'));
   }
   return data;
 }
 
 export function simulateYesterdayActive(streakBeforeToday = 6): StreakData {
   const yesterday = getYesterdayDateKey();
-  const current = getStreakData();
+  const current = getSimulatedStreakData();
   const badges = [...current.badges];
   if (streakBeforeToday >= 3 && !badges.includes('3-Day Streak')) {
     badges.push('3-Day Streak');
@@ -214,11 +277,11 @@ export function simulateYesterdayActive(streakBeforeToday = 6): StreakData {
   };
 
   try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data));
+    localStorage.setItem(SIMULATION_KEY, JSON.stringify(data));
   } catch (e) {}
 
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('streakUpdated'));
+    window.dispatchEvent(new Event('simulationUpdated'));
   }
   return data;
 }
@@ -232,11 +295,74 @@ export function resetStreakData(): StreakData {
   };
 
   try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data));
+    localStorage.removeItem(STREAK_KEY);
   } catch (e) {}
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('streakUpdated'));
+  }
+  return data;
+}
+
+export function recordSimulatedLearningActivity(): StreakData {
+  const current = getSimulatedStreakData();
+  const today = getLocalDateKey();
+
+  if (current.lastActivityDate === today) {
+    return current;
+  }
+
+  let newCurrentStreak = 1;
+  if (current.lastActivityDate) {
+    const todayDate = parseLocalDate(today);
+    const lastActivity = parseLocalDate(current.lastActivityDate);
+    const diffTime = Math.abs(todayDate.getTime() - lastActivity.getTime());
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) {
+      newCurrentStreak = (current.currentStreak || 0) + 1;
+    } else {
+      newCurrentStreak = 1;
+    }
+  }
+
+  const badges = [...current.badges];
+  if (newCurrentStreak >= 3 && !badges.includes('3-Day Streak')) badges.push('3-Day Streak');
+  if (newCurrentStreak >= 7 && !badges.includes('7-Day Streak')) badges.push('7-Day Streak');
+  if (newCurrentStreak >= 14 && !badges.includes('14-Day Streak')) badges.push('14-Day Streak');
+  if (newCurrentStreak >= 30 && !badges.includes('30-Day Streak')) badges.push('30-Day Streak');
+
+  const updated: StreakData = {
+    currentStreak: newCurrentStreak,
+    longestStreak: Math.max(current.longestStreak, newCurrentStreak),
+    lastActivityDate: today,
+    lastActivityType: 'learning',
+    badges,
+  };
+
+  try {
+    localStorage.setItem(SIMULATION_KEY, JSON.stringify(updated));
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('simulationUpdated'));
+  }
+  return updated;
+}
+
+export function resetSimulatedStreakData(): StreakData {
+  const data: StreakData = {
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null,
+    badges: [],
+  };
+
+  try {
+    localStorage.setItem(SIMULATION_KEY, JSON.stringify(data));
+  } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('simulationUpdated'));
   }
   return data;
 }

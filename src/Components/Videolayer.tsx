@@ -65,9 +65,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
   // Active saved timestamp initialized safely to 0 to prevent SSR/client hydration mismatch
   const [initialSavedTime, setInitialSavedTime] = useState<number>(0);
-
-  // Prompt state: initialized safely to false, updated in useEffect after mount
-  const [showResumePrompt, setShowResumePrompt] = useState<boolean>(false);
+  const [autoResumedTime, setAutoResumedTime] = useState<number | null>(null);
+  const [autoplayBlocked, setAutoplayBlocked] = useState<boolean>(false);
+  const [showAutoResumeBanner, setShowAutoResumeBanner] = useState<boolean>(false);
 
   const [currentDisplayTime, setCurrentDisplayTime] = useState<number>(0);
   const [durationDisplay, setDurationDisplay] = useState<number>(0);
@@ -87,17 +87,19 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     }
   }, []);
 
-  // When moduleIndex or courseId changes (switching to a different module), re-check for that module
+  // When moduleIndex or courseId changes, read saved time for this module
   useEffect(() => {
     hasHandledPromptThisVisit.current = false;
     const time = readStorageTime();
     setInitialSavedTime(time);
     if (time >= 2) {
-      setShowResumePrompt(true);
+      setAutoResumedTime(time);
+      setShowAutoResumeBanner(true);
       currentTimeRef.current = time;
       setCurrentDisplayTime(time);
     } else {
-      setShowResumePrompt(false);
+      setAutoResumedTime(null);
+      setShowAutoResumeBanner(false);
       currentTimeRef.current = 0;
       setCurrentDisplayTime(0);
     }
@@ -212,11 +214,25 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       }
     } catch (e) {}
 
-    // If resume prompt is active, ensure video is kept paused initially
-    if (showResumePrompt) {
+    const saved = initialSavedTime || readStorageTime();
+    if (saved >= 2) {
       try {
-        event.target.pauseVideo();
-      } catch (e) {}
+        // Task 6: Automatically seek to saved timestamp and auto-resume
+        event.target.seekTo(saved, true);
+        setAutoResumedTime(saved);
+        setShowAutoResumeBanner(true);
+
+        const playPromise = event.target.playVideo();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch((err: any) => {
+            console.warn('[Videolayer] Autoplay blocked by browser policy:', err);
+            setAutoplayBlocked(true);
+          });
+        }
+      } catch (e) {
+        console.warn('[Videolayer] Auto-resume seek/play error:', e);
+        setAutoplayBlocked(true);
+      }
     }
   };
 
@@ -232,13 +248,11 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     } catch (e) {}
 
     if (event.data === 1) { // Playing
-      // If resume overlay is currently displayed, do not allow background autoplay
-      if (showResumePrompt) {
-        try {
-          player.pauseVideo();
-        } catch (e) {}
-        return;
-      }
+      setAutoplayBlocked(false);
+      // Auto-dismiss the auto-resume banner after 6 seconds of smooth playback
+      setTimeout(() => {
+        setShowAutoResumeBanner(false);
+      }, 6000);
 
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
@@ -248,11 +262,9 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           if (time > 0) {
             currentTimeRef.current = time;
             setCurrentDisplayTime(time);
-            // Save in background without re-triggering prompt on same page
             if (time >= 2 && saveProgress) {
               saveProgress(time, dur);
             }
-            // Once user watches for 15+ seconds, record daily learning activity
             if (time >= 15) {
               recordLearningActivity();
             }
@@ -278,12 +290,12 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
       if (intervalRef.current) clearInterval(intervalRef.current);
       const cur = currentTimeRef.current;
       const dur = durationRef.current;
-      // Only clear if user genuinely reached the end of the video
       if (dur > 0 && cur >= dur - 3) {
         currentTimeRef.current = 0;
         setCurrentDisplayTime(0);
         setInitialSavedTime(0);
-        setShowResumePrompt(false);
+        setAutoResumedTime(null);
+        setShowAutoResumeBanner(false);
         hasHandledPromptThisVisit.current = true;
         if (clearProgress) clearProgress();
         try {
@@ -297,12 +309,12 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
   const handleResume = () => {
     hasHandledPromptThisVisit.current = true;
-    setShowResumePrompt(false);
     const targetTime = initialSavedTime || readStorageTime();
     if (playerRef.current && targetTime >= 2) {
       try {
         playerRef.current.seekTo(targetTime, true);
         playerRef.current.playVideo();
+        setAutoplayBlocked(false);
       } catch (e) {
         console.warn("Error seeking in player", e);
       }
@@ -312,7 +324,8 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
 
   const handleStartOver = () => {
     hasHandledPromptThisVisit.current = true;
-    setShowResumePrompt(false);
+    setShowAutoResumeBanner(false);
+    setAutoResumedTime(null);
     setInitialSavedTime(0);
     currentTimeRef.current = 0;
     setCurrentDisplayTime(0);
@@ -343,10 +356,11 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
     width: '100%',
     height: '100%',
     playerVars: {
-      autoplay: 0,
+      autoplay: 1,
       rel: 0,
       modestbranding: 1,
-      enablejsapi: 1
+      enablejsapi: 1,
+      ...(initialSavedTime >= 2 ? { start: Math.floor(initialSavedTime) } : {}),
     },
   };
 
@@ -388,104 +402,53 @@ const Videolayer = ({ videoId, title, courseId, moduleIndex, onComplete }: Video
           </div>
         )}
 
-        {/* 100% Solid Opaque Resume Overlay: NEVER shows while user is in the same page watching; ONLY shows on route re-entry */}
-        {showResumePrompt && initialSavedTime >= 2 && (
+        {/* Task 6: Non-blocking Floating Auto-Resume Banner with Autoplay Fallback and Start Over */}
+        {showAutoResumeBanner && autoResumedTime && autoResumedTime >= 2 && (
           <div
-            id="video-resume-overlay"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 50,
-              backgroundColor: '#090d16',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2rem 1.5rem',
-              textAlign: 'center',
-              userSelect: 'none',
-              boxShadow: 'inset 0 0 100px rgba(0, 0, 0, 0.8)',
-            }}
+            id="video-autoresume-notification"
+            className="absolute top-3 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-md z-40 bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-xl border border-blue-500/40 shadow-2xl flex items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in"
           >
-            {/* Pill Badge */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.35rem 0.85rem',
-                borderRadius: '9999px',
-                backgroundColor: 'rgba(0, 86, 210, 0.18)',
-                border: '1px solid rgba(0, 86, 210, 0.45)',
-                color: '#60a5fa',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                marginBottom: '1rem',
-              }}
-            >
-              <Clock style={{ width: '0.875rem', height: '0.875rem' }} />
-              <span>Resume Watching</span>
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className="p-1.5 bg-blue-600/30 text-blue-400 rounded-lg flex-shrink-0">
+                <Play className="w-4 h-4 fill-current" />
+              </div>
+              <div className="truncate">
+                <div className="font-semibold text-white">Auto-resumed playback</div>
+                <div className="text-[11px] text-gray-300">
+                  Resumed from <span className="text-blue-300 font-bold">{formatTime(autoResumedTime)}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Clear Heading */}
-            <h3
-              style={{
-                fontSize: '1.5rem',
-                fontWeight: 700,
-                color: '#ffffff',
-                marginBottom: '0.5rem',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Pick up where you left off
-            </h3>
-
-            {/* Explanatory text */}
-            <p
-              style={{
-                color: '#94a3b8',
-                fontSize: '0.875rem',
-                maxWidth: '28rem',
-                marginBottom: '1.75rem',
-                lineHeight: 1.5,
-              }}
-            >
-              You previously stopped at{" "}
-              <span
-                style={{
-                  fontWeight: 700,
-                  color: '#93c5fd',
-                  backgroundColor: 'rgba(30, 58, 138, 0.7)',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                }}
-              >
-                {formatTime(initialSavedTime)}
-              </span>
-              . Would you like to resume or start from the beginning?
-            </p>
-
-            {/* Action Buttons: 100% Solid, High Contrast, Guaranteed Visibility & Responsive Stacking */}
-            <div
-              className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3.5 w-full max-w-md px-2"
-            >
-              <button
-                id="btn-resume-watching"
-                onClick={handleResume}
-                className="w-full sm:flex-1 py-3 px-4 bg-[#0056D2] hover:bg-[#00419e] text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 border-0 cursor-pointer shadow-md transition-colors min-h-[44px]"
-              >
-                <Play className="w-4 h-4 fill-current flex-shrink-0" />
-                <span>Resume from {formatTime(initialSavedTime)}</span>
-              </button>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              {autoplayBlocked && (
+                <button
+                  id="btn-resume-watching"
+                  onClick={handleResume}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-xs flex items-center space-x-1 shadow-sm transition-colors cursor-pointer"
+                  title="Click to resume playback"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Resume</span>
+                </button>
+              )}
 
               <button
                 id="btn-start-beginning"
                 onClick={handleStartOver}
-                className="w-full sm:flex-1 py-3 px-4 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] rounded-lg font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 border border-[#334155] cursor-pointer transition-colors min-h-[44px]"
+                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center space-x-1 border border-slate-700 transition-colors cursor-pointer"
+                title="Restart this lesson from 0:00"
               >
-                <RotateCcw className="w-4 h-4 flex-shrink-0" />
-                <span>Start from Beginning</span>
+                <RotateCcw className="w-3 h-3" />
+                <span>Start Over</span>
+              </button>
+
+              <button
+                onClick={() => setShowAutoResumeBanner(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer"
+                title="Dismiss banner"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

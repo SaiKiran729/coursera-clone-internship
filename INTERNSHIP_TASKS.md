@@ -208,13 +208,12 @@ Save course content and access it without an internet connection. (Videos do not
 - ✅ Refresh the page while still offline.
 - ✅ Verify again that the saved course content loads correctly.
 
-#### Implementation Details
+#### ElevanceSkills Evaluation Corrections & Architecture
 - **Location:** `public/sw.js`, `src/utils/offlineStorage.ts`, and `src/pages/course/[id]/index.tsx`
-- **IndexedDB Storage:** When the user clicks *"Download for Offline"*, `downloadCourseForOffline` serializes the course object, modules, syllabus descriptions, and converts the primary cover image into a Base64 data URL stored in IndexedDB (`keyval-store`).
-- **Service Worker Caching Shell:** The Service Worker (`public/sw.js`) caches the course route `/course/[id]` along with all document scripts and stylesheets.
-- **Offline Fallback Matching:** When offline, the Service Worker intercepts navigation requests and matches against the cached page using `{ ignoreSearch: true }` and pathname fallbacks.
-- **Zero Hydration Errors:** `src/pages/course/[id]/index.tsx` synchronously resolves the course from cached constants and IndexedDB, preventing `"Course not found"` flashes or `ERR_INTERNET_DISCONNECTED` errors.
-- **Video Exclusion:** Video streaming endpoints (`youtube.com`, `youtu.be`) are intentionally bypassed by the Service Worker per explicit requirements.
+- **Cache-v4 Network-First Strategy for Next.js Chunks:** Previously, bypassing `/_next/` assets caused cached HTML to fail when loading JavaScript and CSS offline. The Service Worker (`public/sw.js`, cache `coursera-clone-cache-v4`) now intercepts `/_next/static/` and `/_next/data/` using **Network-First with Cache Fallback**. When online, fresh bundles are fetched and cached; when offline, cached JavaScript chunks and stylesheets are served reliably.
+- **Guaranteed Local SVG Image Fallback:** External image providers (Unsplash) often block cross-origin offline caching or fail in airplane mode. `generateOfflineCourseSvg()` creates an inlined local SVG data URI banner with the course title, guaranteeing that cover images never display broken image icons while offline.
+- **IndexedDB Course Serialization:** Stores course metadata, syllabus modules, career outcomes, and SVG fallbacks into IndexedDB (`keyval-store`).
+- **Offline Navigation Fallback:** The Service Worker routes offline navigation requests directly to the cached `/course/[id]` shell, avoiding browser `ERR_INTERNET_DISCONNECTED` errors.
 
 ---
 
@@ -232,25 +231,14 @@ Track daily learning activity, consecutive days, and achievements.
 - ✅ Check the achievements section for the 7-Day badge if your streak has reached seven consecutive days.
 - ✅ If possible, verify missed-day reset behavior using suitable test data rather than waiting a day just for testing.
 
-#### Implementation Details
+#### ElevanceSkills Evaluation Corrections & Architecture
 - **Location:** `src/utils/learningActivity.ts`, `src/utils/date.ts`, `src/pages/profile/index.tsx`, and `src/Components/Navbar.tsx`
-- **Timezone-Safe Date Tracking:** `getLocalDateKey()` generates calendar keys in `YYYY-MM-DD` format according to the user's local timezone.
-- **Streak Calculation Logic:**
-  - If `lastActivityDate === today`: activity is already recorded; **streak does not increase twice**.
-  - If `diffDays === 1`: consecutive day; streak increments by 1.
-  - If `diffDays > 1`: a day was missed; active streak resets to 0 (and resets to 1 upon new activity).
-- **Achievements & Badges Grid:** The Profile page highlights earned badges in gold and shows locked milestones:
-  - `3-Day Streak`
-  - `7-Day Streak` *(Specifically highlighted for Task 4 evaluation)*
-  - `14-Day Streak`
-  - `30-Day Streak`
-- **Interactive Streak Testing & Simulation Tools:** Evaluators can verify behavior immediately on the Profile page without waiting real calendar days:
-  - **Simulate 7-Day Streak:** Immediately sets streak to 7 and unlocks the 7-Day badge.
-  - **Simulate Missed Day:** Sets last activity to 2 days ago, resetting streak to 0.
-  - **Simulate Active Yesterday:** Sets streak to 6 from yesterday, allowing the next activity today to trigger the 7-day milestone.
-  - **Record Today's Activity:** Tests that today's activity logs without double-incrementing.
-  - **Reset Streak:** Clears streak back to 0.
-- **Global Navbar Integration:** A live clickable flame badge (`🔥 [X] Day Streak`) in the Navbar reflects real-time streak changes via the custom `streakUpdated` event and links directly to `/profile`.
+- **Independent Daily Login Tracking:** Daily user logins are tracked independently via `recordDailyLogin()` in `src/Components/Navbar.tsx` upon authentication. Session persistence (`coursera_user_session`) ensures page refreshes do NOT inflate streak counts.
+- **Unified 1-Increment-Per-Calendar-Day Policy:** Both logins and course module completions feed into a unified streak engine. Once activity is recorded for the current local calendar day, further actions on that same day maintain the streak without duplicate increments.
+- **Isolated Evaluator Simulation Sandbox:** The evaluator noted that simulation tools directly mutated real `learning_streak` in `localStorage`. Simulations are now completely decoupled into an isolated sandbox key (`learning_streak_simulation`):
+  - **Authentic User Progress Tab:** Displays genuine streaks and milestones saved in `learning_streak`.
+  - **Evaluator Simulator Sandbox Tab:** Runs test tools (`simulateStreak(7)`, `simulateMissedDay()`, `simulateYesterdayActive(6)`, `resetSimulatedStreakData()`) exclusively in the sandbox without altering or corrupting authentic user data.
+- **Achievements & Badges Grid:** Highlights unlocked milestone badges (`3-Day`, `7-Day`, `14-Day`, `30-Day`) with responsive tooltips and status indicators.
 
 ---
 
@@ -270,21 +258,17 @@ Schedule and cancel reminders for unfinished courses.
 - ✅ Allow browser notifications if prompted.
 - ✅ Check notification delivery after the scheduled time.
 
-#### Implementation Details
-- **Location:** `src/pages/course/[id]/index.tsx`, `src/utils/notifications.ts`, `public/sw.js`, and `src/pages/_app.tsx`
-- **Dual Location Placement:** The reminder bell option is available on **both the Course Overview hero and the Sticky Module Page header**.
-- **Available Intervals:**
-  - *"Remind me in 1 hour"* (adds 1 hour)
-  - *"Remind me tomorrow"* (adds 24 hours)
-  - *"⚡ Test Reminder (in 5 sec)"* (specifically added for instant evaluation verification)
-  - *"Cancel Reminder"* (clears the scheduled alert)
-- **Multi-Platform Notification Delivery Engine:**
-  - **Android Chrome & PWA Compatibility:** Android Chrome strictly forbids the direct `new Notification()` constructor (throwing `TypeError: Illegal constructor`). Reminders are dispatched via `ServiceWorkerRegistration.showNotification()` via `navigator.serviceWorker.ready`, enabling system notifications in the Android notification drawer.
-  - **Desktop Chrome / Edge / Firefox Fallback:** If the Service Worker is unavailable, automatically falls back to `new Notification()` wrapped in error guards.
-  - **In-App Toast Banner:** Simultaneously dispatches a foreground custom event `courseReminderFired`, rendering a high-visibility animated toast banner (`#course-reminder-toast`) on both mobile and desktop with course title and direct *"Continue Learning"* action.
-  - **Precise Timer Scheduling:** Instead of coarse polling, `_app.tsx` computes the exact millisecond delta for the earliest scheduled reminder and arms a precise `setTimeout`, backed by a 3-second safety polling interval.
-  - **Permission Enforcement:** Validates `Notification.permission === 'granted'` before persisting reminders or displaying *"Reminder Set"*, providing clear feedback if notifications are blocked.
-- **Auto-Cancellation:** Completing a course automatically purges pending reminders for that course.
+#### ElevanceSkills Evaluation Corrections & Architecture
+- **Location:** `src/pages/course/[id]/index.tsx`, `src/utils/notifications.ts`, `public/sw.js`, `src/pages/_app.tsx`, `src/pages/api/reminders/subscribe.ts`, and `src/pages/api/reminders/trigger.ts`
+- **Server Web Push Endpoints:** Built `/api/reminders/subscribe.ts` (accepts and records push subscriptions) and `/api/reminders/trigger.ts` (server trigger testing).
+- **Truthful Delivery Communication:** The reminder dropdown transparently informs the user of the delivery mechanism:
+  - Open-tab & foreground delivery via Service Worker `showNotification()` on Android Chrome and desktop notifications.
+  - Server-side subscription recorded at `/api/reminders/subscribe` for background push delivery.
+- **Graceful Permission Handling:**
+  - If permission is `denied`: Displays clear guidance on how to unblock notifications in the browser address bar.
+  - If permission is `default`: Informs user that permission prompt will appear upon scheduling.
+  - If permission is `granted`: Displays an active green badge.
+- **Instant Test Verification:** Added `⚡ Test Notification (Fire Now)` button (`#btn-instant-notification-test` and `#btn-overview-instant-notification-test`) allowing evaluators to verify notification delivery with a single click.
 
 ---
 
@@ -297,28 +281,20 @@ Save the last watched position and allow users to resume or restart videos.
 - ✅ Open a course video and start playing.
 - ✅ Play for 20-30 seconds, then navigate away or pause.
 - ✅ Reopen the same video.
-- ✅ Verify that a "Resume Watching" option appears with the saved timestamp (e.g., "Resume from 0:25") and a "Start from Beginning" option.
-- ✅ Click "Resume Watching" and verify that playback resumes from the saved position.
-- ✅ Reopen the video again and click "Start from Beginning."
-- ✅ Verify that playback restarts from 0:00 and the saved position resets.
+- ✅ Verify that video automatically seeks and resumes playback from the saved position.
+- ✅ Verify that an optional "Start from Beginning" option is readily available.
+- ✅ Verify that playback restarts from 0:00 when clicking "Start from Beginning."
 - ✅ Switch between multiple module videos and verify that progress is tracked independently.
 
-#### Implementation Details
+#### ElevanceSkills Evaluation Corrections & Architecture
 - **Location:** `src/Components/Videolayer.tsx` and `src/hooks/useVideoProgress.ts`
-- **Auto-Pause on Navigation (Zero Background Audio):**
-  - Listens to Next.js route transitions (`router.events.on('routeChangeStart')`). When leaving the page, the player **pauses immediately and flushes the exact timestamp to `localStorage`**.
-  - Listens to `document.visibilitychange`: switching browser tabs or minimizing automatically pauses the video.
-  - Component unmount triggers `pauseVideo()` and flushes progress synchronously.
-- **100% Solid Opaque Theater Overlay (Zero Bleed-Through):**
-  - Solid dark theater backdrop (`#090d16`, `zIndex: 50`) prevents YouTube title, channel logo, or white play buttons from bleeding through.
-  - Generous 16:9 theater dimensions (`min-h-[240px] sm:min-h-[380px] md:min-h-[450px]`) ensure the video is never squished or letterboxed.
-  - Displays high-contrast buttons:
-    - **Resume from MM:SS** (Solid Coursera Blue `#0056D2`, bold white text) — seeks to timestamp and plays.
-    - **Start from Beginning** (Solid dark slate `#1e293b`, crisp white text `#f8fafc`) — seeks to 0:00, resets saved progress, and plays.
-  - **Intelligent Session-Scoped Prompting:** The prompt appears upon route entry or return; once the user begins watching, the prompt **never repeats while staying on the same page**, allowing uninterrupted viewing.
-  - **Multi-Redirect Persistence ($N$ Times):** Whenever the user redirects to other pages and returns $N$ times, the resume prompt is guaranteed to appear $N$ times with the exact saved position.
-- **Independent Module Progress:** Storage keys are partitioned by `video_progress_${courseId}_${moduleIndex}`, ensuring modules never overwrite each other.
-- **Real-Time Progress Bar:** Below the player, a live status bar displays the current position (`MM:SS / MM:SS`) and a quick *"Restart (0:00)"* button.
+- **Automatic Seek & Auto-Resume (No Blocking Modal):** The evaluator flagged that the video player detected timestamps but waited for a manual click on a blocking modal prompt. `Videolayer.tsx` now immediately seeks (`player.seekTo(savedTime, true)`) and calls `player.playVideo()` in `onReady` whenever a saved timestamp >= 2s exists.
+- **Non-Blocking Floating Notification Banner:** Replaced the full-screen modal with a sleek floating banner (`#video-autoresume-notification`):
+  - Displays *"Auto-resumed playback from MM:SS"*.
+  - Provides a quick *"Start Over"* button (`#btn-start-beginning`) to restart from 0:00.
+  - Automatically fades out after 6 seconds of smooth playback.
+- **Autoplay Restriction Handling:** If browser autoplay policies block unmuted playback without prior user interaction, the banner displays a prominent *"Resume / Play"* button (`#btn-resume-watching`).
+- **Auto-Pause on Navigation:** Automatically pauses and flushes progress to `localStorage` on page navigation, tab switching (`visibilitychange`), or page unload.
 
 ---
 

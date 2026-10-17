@@ -18,16 +18,28 @@ import React, { useState, useEffect } from "react";
 import {
   getStreakData,
   recordLearningActivity,
+  resetStreakData,
+  getSimulatedStreakData,
   simulateStreak,
   simulateMissedDay,
   simulateYesterdayActive,
-  resetStreakData,
+  recordSimulatedLearningActivity,
+  resetSimulatedStreakData,
   StreakData
 } from "@/utils/learningActivity";
 import { getLocalDateKey } from "@/utils/date";
 
 const ProfilePage = () => {
-  const [streakData, setStreakData] = useState<StreakData>({
+  const [activeMode, setActiveMode] = useState<'real' | 'simulation'>('real');
+  const [realStreakData, setRealStreakData] = useState<StreakData>({
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null,
+    lastLoginDate: null,
+    badges: []
+  });
+
+  const [simulatedData, setSimulatedData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
     lastActivityDate: null,
@@ -36,17 +48,30 @@ const ProfilePage = () => {
 
   const [testFeedback, setTestFeedback] = useState<string | null>(null);
 
-  const refreshStreak = () => {
+  const refreshRealStreak = () => {
     const data = getStreakData();
-    setStreakData({ ...data });
+    setRealStreakData({ ...data });
+  };
+
+  const refreshSimulatedStreak = () => {
+    const data = getSimulatedStreakData();
+    setSimulatedData({ ...data });
   };
 
   useEffect(() => {
-    refreshStreak();
-    window.addEventListener('streakUpdated', refreshStreak);
-    return () => window.removeEventListener('streakUpdated', refreshStreak);
+    refreshRealStreak();
+    refreshSimulatedStreak();
+
+    window.addEventListener('streakUpdated', refreshRealStreak);
+    window.addEventListener('simulationUpdated', refreshSimulatedStreak);
+
+    return () => {
+      window.removeEventListener('streakUpdated', refreshRealStreak);
+      window.removeEventListener('simulationUpdated', refreshSimulatedStreak);
+    };
   }, []);
 
+  const streakData = activeMode === 'simulation' ? simulatedData : realStreakData;
   const todayKey = getLocalDateKey();
   const isTodayActive = streakData.lastActivityDate === todayKey;
 
@@ -56,32 +81,49 @@ const ProfilePage = () => {
   };
 
   const handleSimulate7Day = () => {
+    setActiveMode('simulation');
     simulateStreak(7);
-    showFeedback("Simulated 7-Day streak! 7-Day Badge unlocked.");
+    showFeedback("Simulated 7-Day streak in isolated sandbox! 7-Day Badge unlocked.");
   };
 
   const handleSimulateMissed = () => {
+    setActiveMode('simulation');
     simulateMissedDay();
-    showFeedback("Simulated missed day! Current streak reset to 0.");
+    showFeedback("Simulated missed day in isolated sandbox! Current streak reset to 0.");
   };
 
   const handleSimulateYesterday = () => {
+    setActiveMode('simulation');
     simulateYesterdayActive(6);
-    showFeedback("Simulated active yesterday with 6-day streak! Complete a lesson today to reach 7 days.");
+    showFeedback("Simulated active yesterday with 6-day streak in sandbox! Record today's activity to reach 7 days.");
   };
 
   const handleRecordToday = () => {
-    const res = recordLearningActivity();
-    if (res.lastActivityDate === todayKey && streakData.lastActivityDate === todayKey) {
-      showFeedback("Today's activity was already recorded. Streak does not increase twice on the same day!");
+    if (activeMode === 'simulation') {
+      const res = recordSimulatedLearningActivity();
+      if (res.lastActivityDate === todayKey && simulatedData.lastActivityDate === todayKey) {
+        showFeedback("Today's sandbox activity was already recorded. Streak increments once per calendar day!");
+      } else {
+        showFeedback("Recorded learning activity in simulation sandbox!");
+      }
     } else {
-      showFeedback("Recorded learning activity for today!");
+      const res = recordLearningActivity();
+      if (res.lastActivityDate === todayKey && realStreakData.lastActivityDate === todayKey) {
+        showFeedback("Today's activity was already recorded. Streak increments once per calendar day!");
+      } else {
+        showFeedback("Recorded genuine learning activity for today!");
+      }
     }
   };
 
   const handleReset = () => {
-    resetStreakData();
-    showFeedback("Reset streak data back to 0.");
+    if (activeMode === 'simulation') {
+      resetSimulatedStreakData();
+      showFeedback("Reset sandbox simulation data back to 0.");
+    } else {
+      resetStreakData();
+      showFeedback("Reset authentic user streak data back to 0.");
+    }
   };
 
   const allMilestones = [
@@ -194,10 +236,10 @@ const ProfilePage = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Daily Learning Streak & Achievements</h2>
-              <p className="text-sm text-gray-500">Track daily learning activity, consecutive days, and milestones</p>
+              <p className="text-sm text-gray-500">Track daily logins, learning milestones, and test in isolated evaluator sandbox</p>
             </div>
             {isTodayActive ? (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 self-start sm:self-auto">
@@ -211,6 +253,66 @@ const ProfilePage = () => {
               </span>
             )}
           </div>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex border-b border-gray-200 mb-5 space-x-6">
+            <button
+              id="tab-mode-real"
+              onClick={() => setActiveMode('real')}
+              className={`pb-2.5 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors ${
+                activeMode === 'real'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Authentic User Progress</span>
+            </button>
+            <button
+              id="tab-mode-simulation"
+              onClick={() => setActiveMode('simulation')}
+              className={`pb-2.5 text-sm font-semibold border-b-2 flex items-center space-x-2 transition-colors ${
+                activeMode === 'simulation'
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span>Evaluator Simulator Sandbox</span>
+            </button>
+          </div>
+
+          {/* Active Mode Notice Banner */}
+          {activeMode === 'simulation' ? (
+            <div className="mb-6 p-3 bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <span>
+                  <strong>Evaluator Sandbox Active:</strong> Operating on isolated key <code>learning_streak_simulation</code>. Evaluator actions will never corrupt authentic user data.
+                </span>
+              </div>
+              <button
+                onClick={() => setActiveMode('real')}
+                className="text-[11px] underline font-semibold text-indigo-700 hover:text-indigo-900 self-start sm:self-auto"
+              >
+                Return to Authentic Progress
+              </button>
+            </div>
+          ) : (
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span>
+                  <strong>Authentic Mode:</strong> Progress is updated via user logins and completed course modules in <code>learning_streak</code>.
+                </span>
+              </div>
+              {realStreakData.lastLoginDate && (
+                <span className="text-[11px] text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded self-start sm:self-auto">
+                  Last Login: {realStreakData.lastLoginDate}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-orange-50 border border-orange-200/80 p-5 rounded-xl flex flex-col items-center justify-center text-center shadow-xs">
@@ -284,12 +386,14 @@ const ProfilePage = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-indigo-600" />
-                <h4 className="text-sm font-bold text-gray-800">Streak Testing & Verification Tools (Task 4)</h4>
+                <h4 className="text-sm font-bold text-gray-800">Evaluator Simulator Sandbox (Task 4 Genuinely Isolated)</h4>
               </div>
-              <span className="text-xs text-gray-500">Instant test controls for evaluator</span>
+              <span className="text-[11px] font-medium text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded">
+                Isolated Sandbox Mode
+              </span>
             </div>
-            <p className="text-xs text-gray-600 mb-4">
-              Test milestone badge unlocks, missed-day reset behavior, and single daily increments without waiting real days.
+            <p className="text-xs text-gray-600 mb-4 leading-relaxed">
+              Test milestone unlocks, missed-day resets, and single calendar-day increments. Evaluator simulations write exclusively to <code>learning_streak_simulation</code>, leaving authentic user data completely uncorrupted.
             </p>
 
             {testFeedback && (
@@ -333,7 +437,7 @@ const ProfilePage = () => {
                 className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium shadow-xs transition-colors flex items-center"
               >
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                Record Today's Activity
+                Record Activity Today ({activeMode === 'simulation' ? 'Sandbox' : 'Real'})
               </button>
 
               <button
@@ -342,7 +446,7 @@ const ProfilePage = () => {
                 className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-xs font-medium shadow-xs transition-colors flex items-center"
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                Reset Streak
+                Reset ({activeMode === 'simulation' ? 'Sandbox' : 'Real'})
               </button>
             </div>
           </div>
